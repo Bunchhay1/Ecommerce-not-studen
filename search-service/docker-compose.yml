@@ -1,0 +1,94 @@
+services:
+  opensearch:
+    image: opensearchproject/opensearch:2.15.0
+    container_name: search_service_opensearch
+    environment:
+      - cluster.name=opensearch-cluster
+      - node.name=opensearch-node1
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "DISABLE_INSTALL_DEMO_CONFIG=true"
+      - "DISABLE_SECURITY_PLUGIN=true"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+    networks:
+      - ecommerce_network
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.15.0
+    container_name: search_service_dashboards
+    ports:
+      - "5601:5601"
+    environment:
+      OPENSEARCH_HOSTS: '["http://opensearch:9200"]'
+      DISABLE_SECURITY_DASHBOARDS_PLUGIN: "true"
+    depends_on:
+      - opensearch
+    networks:
+      - ecommerce_network
+
+  redis-search:
+    image: redis:7.2-alpine
+    container_name: search_service_redis
+    ports:
+      - "6382:6379"
+    volumes:
+      - redis_search_data:/data
+    networks:
+      - ecommerce_network
+
+  postgres-search:
+    image: postgres:16-alpine
+    container_name: search_service_postgres
+    environment:
+      POSTGRES_DB: search_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_search_data:/var/lib/postgresql/data
+    networks:
+      - ecommerce_network
+
+  search-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: search_service_app
+    ports:
+      - "8084:8084"
+    environment:
+      - OPENSEARCH_HOST=opensearch
+      - OPENSEARCH_PORT=9200
+      - OPENSEARCH_USE_SSL=false
+      - REDIS_HOST=redis-search
+      - REDIS_PORT=6379
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres-search:5432/search_db
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - opensearch
+      - redis-search
+      - postgres-search
+    networks:
+      - ecommerce_network
+
+networks:
+  ecommerce_network:
+    driver: bridge
+
+volumes:
+  opensearch_data:
+  redis_search_data:
+  postgres_search_data:

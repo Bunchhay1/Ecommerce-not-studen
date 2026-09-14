@@ -1,0 +1,64 @@
+version: "3.8"
+
+services:
+  recommendation-db:
+    image: postgres:16-alpine
+    container_name: recommendation-postgres
+    environment:
+      POSTGRES_DB: recommendation_db
+      POSTGRES_USER: recommendation_user
+      POSTGRES_PASSWORD: recommendation_password
+    ports:
+      - "5444:5432"
+    volumes:
+      - recommendation_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U recommendation_user -d recommendation_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ecommerce-network
+
+  recommendation-redis:
+    image: redis:7-alpine
+    container_name: recommendation-redis
+    ports:
+      - "6391:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ecommerce-network
+
+  recommendation-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: recommendation-service
+    ports:
+      - "8093:8093"
+    environment:
+      - PORT=8093
+      - ENVIRONMENT=production
+      - DATABASE_URL=postgresql+asyncpg://recommendation_user:recommendation_password@recommendation-db:5432/recommendation_db
+      - REDIS_URL=redis://recommendation-redis:6379/0
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - LOG_LEVEL=INFO
+    depends_on:
+      recommendation-db:
+        condition: service_healthy
+      recommendation-redis:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+
+volumes:
+  recommendation_pgdata:
+
+networks:
+  ecommerce-network:
+    name: ecommerce-network
+    external: true

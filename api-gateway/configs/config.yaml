@@ -1,0 +1,161 @@
+server:
+  port: 8000
+  read_timeout_seconds: 15
+  write_timeout_seconds: 15
+  idle_timeout_seconds: 60
+  cors_allowed_origins: ["*"]
+  cors_allowed_methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+  cors_allowed_headers: ["Origin", "Content-Type", "Accept", "Authorization", "X-Request-ID", "Idempotency-Key"]
+
+auth:
+  jwt_secret: "supersecretkeysharedacrossmicroservices2026"
+  token_header: "Authorization"
+
+redis:
+  address: "localhost:6379"
+  password: ""
+  db: 0
+  pool_size: 20
+
+rate_limit:
+  enabled: true
+  policies:
+    login:
+      requests: 5
+      window_seconds: 60
+    search:
+      requests: 100
+      window_seconds: 60
+    admin:
+      requests: 100
+      window_seconds: 60
+    default:
+      requests: 300
+      window_seconds: 60
+
+services:
+  auth:
+    name: "auth-service"
+    prefix: "/api/v1/auth"
+    target: "http://localhost:8001"
+    timeout_seconds: 5
+    require_auth: false
+
+  user:
+    name: "user-service"
+    prefix: "/api/v1/users"
+    target: "http://localhost:8002"
+    timeout_seconds: 5
+    require_auth: true
+
+  catalog:
+    name: "catalog-service"
+    prefix: "/api/v1/products"
+    target: "http://localhost:8003"
+    timeout_seconds: 5
+    require_auth: false
+
+  categories:
+    name: "catalog-service-categories"
+    prefix: "/api/v1/categories"
+    target: "http://localhost:8003"
+    timeout_seconds: 5
+    require_auth: false
+
+  search:
+    name: "search-service"
+    prefix: "/api/v1/search"
+    target: "http://localhost:8004"
+    timeout_seconds: 5
+    require_auth: false
+
+  cart:
+    name: "cart-service"
+    prefix: "/api/v1/cart"
+    target: "http://localhost:8005"
+    timeout_seconds: 5
+    require_auth: false
+
+  inventory:
+    name: "inventory-service"
+    prefix: "/api/v1/inventory"
+    target: "http://localhost:8006"
+    timeout_seconds: 5
+    require_auth: true
+
+  order:
+    name: "order-service"
+    prefix: "/api/v1/orders"
+    target: "http://localhost:8007"
+    timeout_seconds: 10
+    require_auth: true
+
+  payment:
+    name: "payment-service"
+    prefix: "/api/v1/payments"
+    target: "http://localhost:8008"
+    timeout_seconds: 10
+    require_auth: true
+
+  shipping:
+    name: "shipping-service"
+    prefix: "/api/v1/shipping"
+    target: "http://localhost:8009"
+    timeout_seconds: 10
+    require_auth: true
+
+  promotion:
+    name: "promotion-service"
+    prefix: "/api/v1/promotions"
+    target: "http://localhost:8010"
+    timeout_seconds: 5
+    require_auth: false
+
+  pricing:
+    name: "pricing-service"
+    prefix: "/api/v1/pricing"
+    target: "http://localhost:8010"
+    timeout_seconds: 5
+    require_auth: false
+
+  review:
+    name: "review-service"
+    prefix: "/api/v1/reviews"
+    target: "http://localhost:8011"
+    timeout_seconds: 5
+    require_auth: false
+
+  notification:
+    name: "notification-service"
+    prefix: "/api/v1/notifications"
+    target: "http://localhost:8012"
+    timeout_seconds: 5
+    require_auth: true
+
+  recommendation:
+    name: "recommendation-service"
+    prefix: "/api/v1/recommendations"
+    target: "http://localhost:8013"
+    timeout_seconds: 5
+    require_auth: false
+
+  seller:
+    name: "seller-service"
+    prefix: "/api/v1/sellers"
+    target: "http://localhost:8014"
+    timeout_seconds: 10
+    require_auth: false
+
+  seller_alias:
+    name: "seller-service-alias"
+    prefix: "/api/v1/seller"
+    target: "http://localhost:8014"
+    timeout_seconds: 10
+    require_auth: false
+
+  admin:
+    name: "admin-service"
+    prefix: "/api/v1/admin"
+    target: "http://localhost:8015"
+    timeout_seconds: 15
+    require_auth: true

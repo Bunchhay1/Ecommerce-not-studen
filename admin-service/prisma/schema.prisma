@@ -1,0 +1,160 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AdminStatus {
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum RoleStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum AuditStatus {
+  SUCCESS
+  FAILURE
+}
+
+enum OutboxStatus {
+  PENDING
+  PUBLISHED
+  FAILED
+}
+
+model AdminUser {
+  id        String      @id @default(uuid())
+  userId    String      @unique @map("user_id") // Links to Auth / User Service user_id
+  status    AdminStatus @default(ACTIVE)
+  notes     String?
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  roles     AdminUserRole[]
+  auditLogs AuditLog[]
+
+  @@map("admin_users")
+}
+
+model Role {
+  id          String     @id @default(uuid())
+  name        String     @unique // e.g. SUPER_ADMIN, ADMIN, MODERATOR, SUPPORT, etc.
+  description String?
+  status      RoleStatus @default(ACTIVE)
+  isSystem    Boolean    @default(false) @map("is_system")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  permissions RolePermission[]
+  adminUsers  AdminUserRole[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  code        String   @unique // e.g. USER_READ, SELLER_SUSPEND, PRODUCT_APPROVE, ORDER_CANCEL
+  description String?
+  category    String   // USERS, SELLERS, CATALOG, ORDERS, INVENTORY, PAYMENTS, REVIEWS, PROMOTIONS, NOTIFICATIONS, SYSTEM
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String @map("role_id")
+  permissionId String @map("permission_id")
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model AdminUserRole {
+  adminUserId String @map("admin_user_id")
+  roleId      String @map("role_id")
+
+  adminUser AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  role      Role      @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([adminUserId, roleId])
+  @@map("admin_user_roles")
+}
+
+model AuditLog {
+  id           String      @id @default(uuid())
+  adminUserId  String      @map("admin_user_id")
+  adminEmail   String?     @map("admin_email")
+  action       String      // e.g. SELLER_SUSPENDED, ORDER_CANCELLED, REFUND_PROCESSED, PRODUCT_APPROVED
+  resourceType String      @map("resource_type") // e.g. SELLER, ORDER, PRODUCT, USER, INVENTORY, REVIEW, ROLE
+  resourceId   String      @map("resource_id")
+  oldValue     Json?       @map("old_value")
+  newValue     Json?       @map("new_value")
+  reason       String?     @db.Text
+  ipAddress    String?     @map("ip_address")
+  userAgent    String?     @map("user_agent")
+  requestId    String?     @map("request_id")
+  status       AuditStatus @default(SUCCESS)
+  createdAt    DateTime    @default(now()) @map("created_at")
+
+  adminUser AdminUser? @relation(fields: [adminUserId], references: [userId], onDelete: SetNull)
+
+  @@index([adminUserId])
+  @@index([resourceType, resourceId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model DashboardDailyAggregate {
+  id          String   @id @default(uuid())
+  date        String   // YYYY-MM-DD
+  metricKey   String   @map("metric_key") // e.g. orders_count, revenue_total, new_users, new_sellers, failed_payments
+  metricValue Float    @default(0) @map("metric_value")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([date, metricKey])
+  @@index([date])
+  @@map("dashboard_daily_aggregates")
+}
+
+model SystemConfig {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       Json
+  description String?
+  updatedBy   String?  @map("updated_by")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("system_configs")
+}
+
+model OutboxEvent {
+  id            String       @id @default(uuid())
+  aggregateType String       @map("aggregate_type")
+  aggregateId   String       @map("aggregate_id")
+  eventType     String       @map("event_type")
+  payload       Json
+  status        OutboxStatus @default(PENDING)
+  retryCount    Int          @default(0) @map("retry_count")
+  errorMessage  String?      @map("error_message")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  publishedAt   DateTime?    @map("published_at")
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("outbox_events")
+}

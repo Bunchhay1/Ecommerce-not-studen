@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  notification-service:
+    build: .
+    container_name: notification-service
+    ports:
+      - "8092:8092"
+    environment:
+      - PHX_SERVER=true
+      - PORT=8092
+      - DATABASE_URL=ecto://notification_user:notification_password@notification-db:5432/notification_db
+      - REDIS_URL=redis://notification-redis:6379/0
+      - KAFKA_BROKERS=localhost:9103
+      - JWT_SECRET=supersecretjwtkeyfornotificationservice2026
+      - SECRET_KEY_BASE=5YVp8WbQJg94hFmZ2sK7wLnXtP1rC6uE0vA3bD8eG4jH9kM1nP5qR7tU3wX6yZ9a
+    depends_on:
+      notification-db:
+        condition: service_healthy
+      notification-redis:
+        condition: service_started
+    networks:
+      - ecommerce-network
+
+  notification-db:
+    image: postgres:16-alpine
+    container_name: notification-postgres
+    ports:
+      - "5443:5432"
+    environment:
+      POSTGRES_DB: notification_db
+      POSTGRES_USER: notification_user
+      POSTGRES_PASSWORD: notification_password
+    volumes:
+      - notification_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notification_user -d notification_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ecommerce-network
+
+  notification-redis:
+    image: redis:7-alpine
+    container_name: notification-redis
+    ports:
+      - "6390:6379"
+    volumes:
+      - notification_redis_data:/data
+    networks:
+      - ecommerce-network
+
+volumes:
+  notification_data:
+  notification_redis_data:
+
+networks:
+  ecommerce-network:
+    driver: bridge

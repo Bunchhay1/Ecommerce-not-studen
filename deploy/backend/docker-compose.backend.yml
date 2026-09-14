@@ -1,0 +1,580 @@
+services:
+  # ============================================================================
+  # Edge Reverse Proxy & API Gateway
+  # ============================================================================
+  api-gateway:
+    build:
+      context: ../../api-gateway
+      dockerfile: Dockerfile
+    image: ${REGISTRY:-ecommerce}/api-gateway:${VERSION:-latest}
+    container_name: ecommerce-api-gateway
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - JWT_SECRET=${JWT_SECRET:-supersecretkeysharedacrossmicroservices2026}
+      - RATE_LIMIT_ENABLED=true
+      - REDIS_ADDR=redis:6379
+      - AUTH_SERVICE_URL=http://auth-service:8000
+      - USER_SERVICE_URL=http://user-service:8002
+      - CATALOG_SERVICE_URL=http://catalog-service:8003
+      - SEARCH_SERVICE_URL=http://search-service:8084
+      - CART_SERVICE_URL=http://cart-service:8005
+      - INVENTORY_SERVICE_URL=http://inventory-service:8006
+      - ORDER_SERVICE_URL=http://order-service:8007
+      - PAYMENT_SERVICE_URL=http://payment-service:8008
+      - SHIPPING_SERVICE_URL=http://shipping-service:8009
+      - PROMOTION_SERVICE_URL=http://pricing-service:8090
+      - PRICING_SERVICE_URL=http://pricing-service:8090
+      - REVIEW_SERVICE_URL=http://review-service:8011
+      - NOTIFICATION_SERVICE_URL=http://notification-service:8012
+      - RECOMMENDATION_SERVICE_URL=http://recommendation-service:8093
+      - SELLER_SERVICE_URL=http://seller-marketplace-service:8014
+      - ADMIN_SERVICE_URL=http://admin-service:8015
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    stop_grace_period: 15s
+    networks:
+      - ecommerce-net
+
+  # ============================================================================
+  # Business Microservices
+  # ============================================================================
+  auth-service:
+    build:
+      context: ../../auth-service
+      dockerfile: Dockerfile
+    image: ${REGISTRY:-ecommerce}/auth-service:${VERSION:-latest}
+    container_name: ecommerce-auth
+    restart: always
+    ports:
+      - "8001:8000"
+    environment:
+      - POSTGRES_SERVER=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-postgres}
+      - POSTGRES_DB=auth_db
+      - SQLALCHEMY_DATABASE_URI=postgresql+asyncpg://postgres:${DB_PASSWORD:-postgres}@postgres:5432/auth_db
+      - SECRET_KEY=${JWT_SECRET:-supersecretkeysharedacrossmicroservices2026}
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    depends_on:
+      - postgres
+    stop_grace_period: 15s
+    networks:
+      - ecommerce-net
+
+  user-service:
+    build:
+      context: ../../user-service
+      dockerfile: Dockerfile
+    image: ${REGISTRY:-ecommerce}/user-service:${VERSION:-latest}
+    container_name: ecommerce-user
+    restart: always
+    ports:
+      - "8002:8002"
+    environment:
+      - PORT=8002
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - DB_NAME=user_db
+      - DB_SSLMODE=disable
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_ENABLED=false
+      - JWT_SECRET=${JWT_SECRET:-supersecretkeysharedacrossmicroservices2026}
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    depends_on:
+      - postgres
+    stop_grace_period: 15s
+    networks:
+      - ecommerce-net
+
+  catalog-service:
+    build:
+      context: ../../catalog-service
+      dockerfile: Dockerfile
+    image: ${REGISTRY:-ecommerce}/catalog-service:${VERSION:-latest}
+    container_name: ecommerce-catalog
+    restart: always
+    ports:
+      - "8003:8003"
+    environment:
+      - SERVER_PORT=8003
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - DB_NAME=catalog_db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+    depends_on:
+      - postgres
+      - kafka
+    stop_grace_period: 30s
+    networks:
+      - ecommerce-net
+
+  search-service:
+    build:
+      context: ../../search-service
+      dockerfile: Dockerfile
+    image: ${REGISTRY:-ecommerce}/search-service:${VERSION:-latest}
+    container_name: ecommerce-search
+    restart: always
+    ports:
+      - "8004:8084"
+    environment:
+      - OPENSEARCH_HOST=opensearch
+      - OPENSEARCH_PORT=9200
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - CATALOG_SERVICE_URL=http://catalog-service:8003
+      - JWT_SECRET_KEY=${JWT_SECRET:-supersecretkeysharedacrossmicroservices2026}
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1024M
+    depends_on:
+      - opensearch
+      - kafka
+    stop_grace_period: 15s
+    networks:
+      - ecommerce-net
+
+  cart-service:
+    build:
+      context: ../../cart-service
+      dockerfile: Dockerfile
+    image: ${REGISTRY:-ecommerce}/cart-service:${VERSION:-latest}
+    container_name: ecommerce-cart
+    restart: always
+    ports:
+      - "8005:8005"
+    environment:
+      - PORT=8005
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKERS=kafka:9092
+      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD:-postgres}@postgres:5432/cart_db
+      - JWT_SECRET=${JWT_SECRET:-supersecretkeysharedacrossmicroservices2026}
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+    stop_grace_period: 15s
+    networks:
+      - ecommerce-net
+
+  inventory-service:
+    build:
+      context: ../../inventory-service
+      dockerfile: Dockerfile
+    image: ${REGISTRY:-ecommerce}/inventory-service:${VERSION:-latest}
+    container_name: ecommerce-inventory
+    restart: always
+    ports:
+      - "8006:8006"
+    environment:
+      - SERVER_PORT=8006
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - DB_NAME=inventory_db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - JWT_SECRET=${JWT_SECRET:-supersecretkeysharedacrossmicroservices2026}
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+    depends_on:
+      - postgres
+    stop_grace_period: 30s
+    networks:
+      - ecommerce-net
+
+  order-service:
+    build:
+      context: ../../order-service
+      dockerfile: Dockerfile
+    image: ${REGISTRY:-ecommerce}/order-service:${VERSION:-latest}
+    container_name: ecommerce-order
+    restart: always
+    ports:
+      - "8007:8007"
+    environment:
+      - SERVER_PORT=8007
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - DB_NAME=order_db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - JWT_SECRET=${JWT_SECRET:-supersecretkeysharedacrossmicroservices2026}
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+    depends_on:
+      - postgres
+      - kafka
+    stop_grace_period: 30s
+    networks:
+      - ecommerce-net
+
+  payment-service:
+    build:
+      context: ../../payment-service
+      dockerfile: Dockerfile
+    image: ${REGISTRY:-ecommerce}/payment-service:${VERSION:-latest}
+    container_name: ecommerce-payment
+    restart: always
+    ports:
+      - "8008:8008"
+    environment:
+      - ASPNETCORE_URLS=http://+:8008
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=payment_db;Username=postgres;Password=${DB_PASSWORD:-postgres}
+      - Kafka__BootstrapServers=kafka:9092
+      - Redis__ConnectionString=redis:6379
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+    stop_grace_period: 30s
+    networks:
+      - ecommerce-net
+
+  shipping-service:
+    build:
+      context: ../../shipping-service
+      dockerfile: Dockerfile
+    image: ${REGISTRY:-ecommerce}/shipping-service:${VERSION:-latest}
+    container_name: ecommerce-shipping
+    restart: always
+    ports:
+      - "8009:8009"
+    environment:
+      - PORT=8009
+      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD:-postgres}@postgres:5432/shipping_db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKERS=kafka:9092
+      - JWT_SECRET=${JWT_SECRET:-supersecretkeysharedacrossmicroservices2026}
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+    stop_grace_period: 15s
+    networks:
+      - ecommerce-net
+
+  pricing-service:
+    build:
+      context: ../../promotion-pricing-service
+      dockerfile: Dockerfile
+    image: ${REGISTRY:-ecommerce}/pricing-service:${VERSION:-latest}
+    container_name: ecommerce-pricing
+    restart: always
+    ports:
+      - "8010:8090"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:${DB_PASSWORD:-postgres}@postgres:5432/pricing_db
+      - REDIS_URL=redis://redis:6379/0
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - JWT_SECRET=${JWT_SECRET:-supersecretkeysharedacrossmicroservices2026}
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    depends_on:
+      - postgres
+    stop_grace_period: 15s
+    networks:
+      - ecommerce-net
+
+  review-service:
+    build:
+      context: ../../review-service
+      dockerfile: Dockerfile
+    image: ${REGISTRY:-ecommerce}/review-service:${VERSION:-latest}
+    container_name: ecommerce-review
+    restart: always
+    ports:
+      - "8011:8011"
+    environment:
+      - PORT=8011
+      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD:-postgres}@postgres:5432/review_db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKERS=kafka:9092
+      - JWT_SECRET=${JWT_SECRET:-supersecretkeysharedacrossmicroservices2026}
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+    stop_grace_period: 15s
+    networks:
+      - ecommerce-net
+
+  notification-service:
+    build:
+      context: ../../notification-service
+      dockerfile: Dockerfile
+    image: ${REGISTRY:-ecommerce}/notification-service:${VERSION:-latest}
+    container_name: ecommerce-notification
+    restart: always
+    ports:
+      - "8012:8012"
+    environment:
+      - PORT=8012
+      - SECRET_KEY_BASE=supersecretkeybasefornotificationserviceproductionlongenough32chars!
+      - DATABASE_URL=ecto://postgres:${DB_PASSWORD:-postgres}@postgres:5432/notification_db
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    depends_on:
+      - redis
+      - kafka
+    stop_grace_period: 15s
+    networks:
+      - ecommerce-net
+
+  recommendation-service:
+    build:
+      context: ../../recommendation-service
+      dockerfile: Dockerfile
+    image: ${REGISTRY:-ecommerce}/recommendation-service:${VERSION:-latest}
+    container_name: ecommerce-recommendation
+    restart: always
+    ports:
+      - "8013:8093"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:${DB_PASSWORD:-postgres}@postgres:5432/recommendation_db
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+    depends_on:
+      - redis
+      - kafka
+    stop_grace_period: 15s
+    networks:
+      - ecommerce-net
+
+  seller-marketplace-service:
+    build:
+      context: ../../seller-marketplace-service
+      dockerfile: Dockerfile
+    image: ${REGISTRY:-ecommerce}/seller-marketplace-service:${VERSION:-latest}
+    container_name: ecommerce-seller
+    restart: always
+    ports:
+      - "8014:8014"
+    environment:
+      - SERVER_PORT=8014
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - DB_NAME=seller_marketplace_db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - JWT_SECRET=${JWT_SECRET:-supersecretkeysharedacrossmicroservices2026}
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1024M
+    depends_on:
+      - postgres
+      - kafka
+    stop_grace_period: 30s
+    networks:
+      - ecommerce-net
+
+  admin-service:
+    build:
+      context: ../../admin-service
+      dockerfile: Dockerfile
+    image: ${REGISTRY:-ecommerce}/admin-service:${VERSION:-latest}
+    container_name: ecommerce-admin
+    restart: always
+    ports:
+      - "8015:8015"
+    environment:
+      - PORT=8015
+      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD:-postgres}@postgres:5432/admin_db
+      - REDIS_URL=redis://redis:6379
+      - KAFKA_BROKERS=kafka:9092
+      - JWT_SECRET=${JWT_SECRET:-supersecretkeysharedacrossmicroservices2026}
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    depends_on:
+      - postgres
+      - redis
+    stop_grace_period: 15s
+    networks:
+      - ecommerce-net
+
+  # ============================================================================
+  # Shared Production Infrastructure
+  # ============================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: ecommerce-postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4096M
+    networks:
+      - ecommerce-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: ecommerce-redis
+    restart: always
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    volumes:
+      - redis_data:/data
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 2048M
+    networks:
+      - ecommerce-net
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: ecommerce-kafka
+    restart: always
+    environment:
+      - KAFKA_NODE_ID=1
+      - KAFKA_PROCESS_ROLES=broker,controller
+      - KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0
+      - CLUSTER_ID=4L62EnnTQNmnVDHbNedAaA
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 2048M
+    networks:
+      - ecommerce-net
+
+  opensearch:
+    image: opensearchproject/opensearch:2.12.0
+    container_name: ecommerce-opensearch
+    restart: always
+    environment:
+      - discovery.type=single-node
+      - "OPENSEARCH_JAVA_OPTS=-Xms2g -Xmx2g"
+      - DISABLE_SECURITY_PLUGIN=true
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4096M
+    networks:
+      - ecommerce-net
+
+volumes:
+  postgres_data:
+  redis_data:
+  kafka_data:
+  opensearch_data:
+
+networks:
+  ecommerce-net:
+    external: true

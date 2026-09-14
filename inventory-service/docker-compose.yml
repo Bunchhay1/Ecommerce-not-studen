@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  inventory-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: inventory-service
+    ports:
+      - "8086:8086"
+    environment:
+      - SERVER_PORT=8086
+      - DB_HOST=postgres-inventory
+      - DB_PORT=5432
+      - DB_NAME=inventory_db
+      - DB_USER=inventory_user
+      - DB_PASSWORD=inventory_password
+      - REDIS_HOST=redis-inventory
+      - REDIS_PORT=6379
+      - KAFKA_BOOTSTRAP_SERVERS=kafka-inventory:9092
+      - KAFKA_TOPIC_INVENTORY_EVENTS=inventory.events
+      - JWT_SECRET=supersecretjwtkeyforinventoryserviceauthvalidation2026!
+      - JWT_ISSUER=auth-service
+    depends_on:
+      - postgres-inventory
+      - redis-inventory
+      - kafka-inventory
+    networks:
+      - ecommerce-network
+
+  postgres-inventory:
+    image: postgres:16-alpine
+    container_name: postgres-inventory
+    environment:
+      POSTGRES_DB: inventory_db
+      POSTGRES_USER: inventory_user
+      POSTGRES_PASSWORD: inventory_password
+    ports:
+      - "5437:5432"
+    volumes:
+      - postgres_inventory_data:/var/lib/postgresql/data
+    networks:
+      - ecommerce-network
+
+  redis-inventory:
+    image: redis:7-alpine
+    container_name: redis-inventory
+    ports:
+      - "6384:6379"
+    networks:
+      - ecommerce-network
+
+  zookeeper-inventory:
+    image: confluentinc/cp-zookeeper:7.6.0
+    container_name: zookeeper-inventory
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - ecommerce-network
+
+  kafka-inventory:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: kafka-inventory
+    depends_on:
+      - zookeeper-inventory
+    ports:
+      - "9097:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-inventory:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-inventory:29092,PLAINTEXT_HOST://localhost:9097
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - ecommerce-network
+
+volumes:
+  postgres_inventory_data:
+
+networks:
+  ecommerce-network:
+    driver: bridge

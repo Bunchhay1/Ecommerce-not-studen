@@ -1,0 +1,41 @@
+from app.schemas.auth import (
+    ForgotPasswordRequest,
+    LoginRequest,
+    LogoutRequest,
+    MessageResponse,
+    RefreshTokenRequest,
+    RefreshTokenResponse,
+    RegisterRequest,
+    RegisterResponse,
+    ResetPasswordRequest,
+    TokenResponse,
+    VerifyEmailRequest,
+)
+from app.schemas.user import (
+    AssignRoleRequest,
+    PermissionRead,
+    RoleRead,
+    UserMeResponse,
+    UserRead,
+    UserUpdate,
+)
+
+__all__ = [
+    "RegisterRequest",
+    "RegisterResponse",
+    "LoginRequest",
+    "TokenResponse",
+    "RefreshTokenRequest",
+    "RefreshTokenResponse",
+    "LogoutRequest",
+    "ForgotPasswordRequest",
+    "ResetPasswordRequest",
+    "VerifyEmailRequest",
+    "MessageResponse",
+    "PermissionRead",
+    "RoleRead",
+    "UserRead",
+    "UserMeResponse",
+    "UserUpdate",
+    "AssignRoleRequest",
+]

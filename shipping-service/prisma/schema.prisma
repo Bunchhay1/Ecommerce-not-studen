@@ -1,0 +1,162 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x", "linux-musl-openssl-3.0.x", "darwin-arm64"]
+}
+
+enum ShipmentStatus {
+  PENDING
+  CREATED
+  READY_FOR_PICKUP
+  PICKED_UP
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DELIVERED
+  DELIVERY_FAILED
+  RETURNING
+  RETURNED
+  CANCELLED
+  LOST
+}
+
+enum ShippingMethod {
+  STANDARD
+  EXPRESS
+  SAME_DAY
+  NEXT_DAY
+  PICKUP
+}
+
+enum OutboxStatus {
+  PENDING
+  PUBLISHED
+  FAILED
+}
+
+model Shipment {
+  id                    String           @id @default(uuid())
+  shipmentNumber        String           @unique @map("shipment_number")
+  orderId               String           @map("order_id")
+  userId                String           @map("user_id")
+  status                ShipmentStatus   @default(PENDING)
+  shippingMethod        ShippingMethod   @default(STANDARD) @map("shipping_method")
+  carrier               String           @default("LOCAL")
+  trackingNumber        String           @unique @map("tracking_number")
+  shippingFee           Decimal          @default(0.00) @map("shipping_fee") @db.Decimal(10, 2)
+  currency              String           @default("USD")
+  estimatedDeliveryDate DateTime?        @map("estimated_delivery_date")
+  actualDeliveryDate    DateTime?        @map("actual_delivery_date")
+  createdAt             DateTime         @default(now()) @map("created_at")
+  updatedAt             DateTime         @updatedAt @map("updated_at")
+  shippedAt             DateTime?        @map("shipped_at")
+  deliveredAt           DateTime?        @map("delivered_at")
+  cancelledAt           DateTime?        @map("cancelled_at")
+
+  address               ShipmentAddress?
+  items                 ShipmentItem[]
+  trackingEvents        TrackingEvent[]
+
+  @@index([orderId])
+  @@index([userId])
+  @@index([status])
+  @@index([trackingNumber])
+  @@map("shipments")
+}
+
+model ShipmentAddress {
+  id            String   @id @default(uuid())
+  shipmentId    String   @unique @map("shipment_id")
+  recipientName String   @map("recipient_name")
+  phone         String
+  addressLine1  String   @map("address_line1")
+  addressLine2  String?  @map("address_line2")
+  city          String
+  district      String?
+  province      String?
+  country       String
+  postalCode    String   @map("postal_code")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  shipment      Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@map("shipment_addresses")
+}
+
+model ShipmentItem {
+  id          String   @id @default(uuid())
+  shipmentId  String   @map("shipment_id")
+  orderItemId String   @map("order_item_id")
+  productId   String   @map("product_id")
+  variantId   String?  @map("variant_id")
+  sku         String
+  productName String   @map("product_name")
+  quantity    Int      @default(1)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  shipment    Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId])
+  @@map("shipment_items")
+}
+
+model TrackingEvent {
+  id          String         @id @default(uuid())
+  shipmentId  String         @map("shipment_id")
+  status      ShipmentStatus
+  location    String
+  description String
+  eventTime   DateTime       @default(now()) @map("event_time")
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  shipment    Shipment       @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId])
+  @@map("tracking_events")
+}
+
+model IdempotencyKey {
+  id         String   @id @default(uuid())
+  key        String
+  operation  String
+  orderId    String?  @map("order_id")
+  shipmentId String?  @map("shipment_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@unique([key, operation])
+  @@map("idempotency_keys")
+}
+
+model ShippingWebhookEvent {
+  id          String    @id @default(uuid())
+  provider    String
+  eventId     String    @map("event_id")
+  eventType   String    @map("event_type")
+  payload     String    @db.Text
+  processed   Boolean   @default(false)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  processedAt DateTime? @map("processed_at")
+
+  @@unique([provider, eventId])
+  @@index([processed])
+  @@map("shipping_webhook_events")
+}
+
+model OutboxEvent {
+  id            String       @id @default(uuid())
+  aggregateType String       @default("Shipment") @map("aggregate_type")
+  aggregateId   String       @map("aggregate_id")
+  eventType     String       @map("event_type")
+  payload       String       @db.Text
+  status        OutboxStatus @default(PENDING)
+  createdAt     DateTime     @default(now()) @map("created_at")
+  publishedAt   DateTime?    @map("published_at")
+  errorMessage  String?      @map("error_message")
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("outbox_events")
+}

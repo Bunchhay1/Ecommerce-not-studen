@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  pricing-service:
+    build: .
+    container_name: promotion-pricing-service
+    ports:
+      - "8090:8090"
+    environment:
+      - ENVIRONMENT=development
+      - PORT=8090
+      - DATABASE_URL=postgresql+asyncpg://pricing_user:pricing_password@pricing-db:5432/pricing_db
+      - REDIS_URL=redis://pricing-redis:6379/0
+      - KAFKA_BOOTSTRAP_SERVERS=localhost:9101
+      - KAFKA_PROMOTION_TOPIC=promotion.events
+      - JWT_SECRET=supersecretjwtkeyforpromotionandpricingservice2026
+      - JWT_ALGORITHM=HS256
+      - OUTBOX_POLL_INTERVAL_SECONDS=2
+    depends_on:
+      pricing-db:
+        condition: service_healthy
+      pricing-redis:
+        condition: service_started
+    networks:
+      - ecommerce-network
+
+  pricing-db:
+    image: postgres:16-alpine
+    container_name: pricing-postgres
+    ports:
+      - "5441:5432"
+    environment:
+      POSTGRES_DB: pricing_db
+      POSTGRES_USER: pricing_user
+      POSTGRES_PASSWORD: pricing_password
+    volumes:
+      - pricing_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pricing_user -d pricing_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ecommerce-network
+
+  pricing-redis:
+    image: redis:7-alpine
+    container_name: pricing-redis
+    ports:
+      - "6388:6379"
+    volumes:
+      - pricing_redis_data:/data
+    networks:
+      - ecommerce-network
+
+volumes:
+  pricing_data:
+  pricing_redis_data:
+
+networks:
+  ecommerce-network:
+    driver: bridge

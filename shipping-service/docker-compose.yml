@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  shipping-db:
+    image: postgres:16-alpine
+    container_name: shipping-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: shipping_db
+    ports:
+      - "5440:5432"
+    volumes:
+      - shipping_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d shipping_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  shipping-redis:
+    image: redis:7-alpine
+    container_name: shipping-redis
+    restart: unless-stopped
+    ports:
+      - "6387:6379"
+    volumes:
+      - shipping_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  shipping-kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: shipping-kafka
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://shipping-kafka:29092,PLAINTEXT_HOST://localhost:9100'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@shipping-kafka:29093'
+      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9100,CONTROLLER://0.0.0.0:29093'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qz'
+
+  shipping-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: shipping-service
+    restart: unless-stopped
+    ports:
+      - "8089:8089"
+    environment:
+      - NODE_ENV=production
+      - PORT=8089
+      - DATABASE_URL=postgresql://postgres:postgres@shipping-db:5432/shipping_db?schema=public
+      - REDIS_HOST=shipping-redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKERS=shipping-kafka:29092
+    depends_on:
+      shipping-db:
+        condition: service_healthy
+      shipping-redis:
+        condition: service_healthy
+
+volumes:
+  shipping_db_data:
+  shipping_redis_data:

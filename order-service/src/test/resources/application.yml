@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: order-service-test
+
+  datasource:
+    url: jdbc:h2:mem:order_test_db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+  flyway:
+    enabled: false
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+app:
+  kafka:
+    topics:
+      order-events: order.events
+  jwt:
+    secret: supersecretjwtkeyfororderserviceauthvalidation2026!
+    issuer: auth-service
+  cache:
+    order-ttl-seconds: 60
+  services:
+    cart-url: http://localhost:8085
+    inventory-url: http://localhost:8086
+    user-url: http://localhost:8081
+    catalog-url: http://localhost:8082
+
+logging:
+  level:
+    root: WARN
+    com.example.order: INFO

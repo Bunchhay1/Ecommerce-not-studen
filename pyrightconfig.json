@@ -1,0 +1,46 @@
+{
+  "include": [
+    "auth-service",
+    "search-service",
+    "promotion-pricing-service",
+    "recommendation-service"
+  ],
+  "executionEnvironments": [
+    {
+      "root": "auth-service",
+      "venv": ".venv",
+      "venvPath": "auth-service",
+      "extraPaths": [
+        "auth-service",
+        "auth-service/.venv/lib/python3.14/site-packages"
+      ]
+    },
+    {
+      "root": "search-service",
+      "venv": ".venv",
+      "venvPath": "search-service",
+      "extraPaths": [
+        "search-service",
+        "search-service/.venv/lib/python3.14/site-packages"
+      ]
+    },
+    {
+      "root": "promotion-pricing-service",
+      "venv": ".venv",
+      "venvPath": "promotion-pricing-service",
+      "extraPaths": [
+        "promotion-pricing-service",
+        "promotion-pricing-service/.venv/lib/python3.14/site-packages"
+      ]
+    },
+    {
+      "root": "recommendation-service",
+      "venv": ".venv",
+      "venvPath": "recommendation-service",
+      "extraPaths": [
+        "recommendation-service",
+        "recommendation-service/.venv/lib/python3.14/site-packages"
+      ]
+    }
+  ]
+}

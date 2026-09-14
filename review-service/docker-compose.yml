@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  review-service:
+    build: .
+    container_name: review-rating-service
+    ports:
+      - "8091:8091"
+    environment:
+      - PORT=8091
+      - DATABASE_URL=postgresql://review_user:review_password@review-db:5432/review_db?schema=public
+      - REDIS_HOST=review-redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKERS=localhost:9102
+      - JWT_SECRET=supersecretjwtkeyforreviewandratingservice2026
+      - AUTO_PUBLISH_VERIFIED=true
+      - STORAGE_TYPE=LOCAL
+    depends_on:
+      review-db:
+        condition: service_healthy
+      review-redis:
+        condition: service_started
+    networks:
+      - ecommerce-network
+
+  review-db:
+    image: postgres:16-alpine
+    container_name: review-postgres
+    ports:
+      - "5442:5432"
+    environment:
+      POSTGRES_DB: review_db
+      POSTGRES_USER: review_user
+      POSTGRES_PASSWORD: review_password
+    volumes:
+      - review_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U review_user -d review_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ecommerce-network
+
+  review-redis:
+    image: redis:7-alpine
+    container_name: review-redis
+    ports:
+      - "6389:6379"
+    volumes:
+      - review_redis_data:/data
+    networks:
+      - ecommerce-network
+
+volumes:
+  review_data:
+  review_redis_data:
+
+networks:
+  ecommerce-network:
+    driver: bridge

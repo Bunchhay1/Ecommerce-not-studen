@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  admin-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: admin-service
+    ports:
+      - "8015:8015"
+    environment:
+      - NODE_ENV=production
+      - PORT=8015
+      - DATABASE_URL=postgresql://admin_user:admin_password@admin-db:5432/admin_db?schema=public
+      - REDIS_URL=redis://admin-redis:6379
+      - KAFKA_BROKER=kafka:9092
+      - JWT_SECRET=supersecretkeysharedacrossmicroservices2026
+    depends_on:
+      - admin-db
+      - admin-redis
+    networks:
+      - ecommerce-network
+
+  admin-db:
+    image: postgres:16-alpine
+    container_name: admin-db
+    environment:
+      POSTGRES_USER: admin_user
+      POSTGRES_PASSWORD: admin_password
+      POSTGRES_DB: admin_db
+    ports:
+      - "5446:5432"
+    volumes:
+      - admin_pgdata:/var/lib/postgresql/data
+    networks:
+      - ecommerce-network
+
+  admin-redis:
+    image: redis:7-alpine
+    container_name: admin-redis
+    ports:
+      - "6393:6379"
+    volumes:
+      - admin_redis_data:/data
+    networks:
+      - ecommerce-network
+
+networks:
+  ecommerce-network:
+    driver: bridge
+
+volumes:
+  admin_pgdata:
+  admin_redis_data:

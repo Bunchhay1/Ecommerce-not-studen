@@ -1,0 +1,51 @@
+services:
+  postgres-cart:
+    image: postgres:16-alpine
+    container_name: cart_service_postgres
+    environment:
+      POSTGRES_DB: cart_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres_cart_data:/var/lib/postgresql/data
+    networks:
+      - ecommerce_network
+
+  redis-cart:
+    image: redis:7.2-alpine
+    container_name: cart_service_redis
+    ports:
+      - "6383:6379"
+    volumes:
+      - redis_cart_data:/data
+    networks:
+      - ecommerce_network
+
+  cart-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cart_service_app
+    ports:
+      - "8085:8085"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres-cart:5432/cart_db?schema=public
+      - REDIS_HOST=redis-cart
+      - REDIS_PORT=6379
+      - KAFKA_BROKERS=kafka:9092
+      - CATALOG_SERVICE_URL=http://catalog-service:8083
+    depends_on:
+      - postgres-cart
+      - redis-cart
+    networks:
+      - ecommerce_network
+
+networks:
+  ecommerce_network:
+    driver: bridge
+
+volumes:
+  postgres_cart_data:
+  redis_cart_data:

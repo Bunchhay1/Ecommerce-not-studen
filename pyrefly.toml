@@ -1,0 +1,18 @@
+search-path = [
+    "auth-service",
+    "auth-service/app",
+    "auth-service/migrations",
+    "search-service",
+    "promotion-pricing-service",
+    "recommendation-service"
+]
+
+site-package-path = [
+    "auth-service/.venv/lib/python3.14/site-packages",
+    "search-service/.venv/lib/python3.14/site-packages",
+    "promotion-pricing-service/.venv/lib/python3.14/site-packages",
+    "recommendation-service/.venv/lib/python3.14/site-packages"
+]
+
+[errors]
+missing-import = false

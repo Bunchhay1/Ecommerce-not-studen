@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: inventory-service-test
+
+  datasource:
+    url: jdbc:h2:mem:inventory_test_db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+  flyway:
+    enabled: false
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+app:
+  kafka:
+    topics:
+      inventory-events: inventory.events
+  jwt:
+    secret: supersecretjwtkeyforinventoryserviceauthvalidation2026!
+    issuer: auth-service
+  cache:
+    inventory-ttl-seconds: 60
+
+logging:
+  level:
+    root: WARN
+    com.example.inventory: INFO

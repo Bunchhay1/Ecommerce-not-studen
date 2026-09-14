@@ -1,0 +1,18 @@
+package com.example.marketplace.repository;
+
+import com.example.marketplace.entity.SellerStore;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+import java.util.UUID;
+
+@Repository
+public interface SellerStoreRepository extends JpaRepository<SellerStore, UUID> {
+
+    Optional<SellerStore> findBySellerId(UUID sellerId);
+
+    Optional<SellerStore> findBySlug(String slug);
+
+    boolean existsBySlug(String slug);
+}

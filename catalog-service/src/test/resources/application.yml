@@ -1,0 +1,41 @@
+server:
+  port: 8002
+
+spring:
+  application:
+    name: catalog-service-test
+
+  datasource:
+    url: jdbc:h2:mem:catalog_test_db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+  flyway:
+    enabled: false
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  kafka:
+    bootstrap-servers: localhost:9092
+
+app:
+  jwt:
+    secret: test-jwt-secret-key-for-unit-testing-must-be-long-enough-12345
+  redis:
+    cache-ttl-minutes: 60
+  kafka:
+    enabled: false
+    topic:
+      catalog-events: catalog.events

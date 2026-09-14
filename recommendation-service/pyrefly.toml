@@ -1,0 +1,17 @@
+search-path = [
+    ".",
+    "app"
+]
+
+site-package-path = [
+    ".venv/lib/python3.14/site-packages"
+]
+
+project-includes = [
+    "app/**/*.py",
+    "migrations/**/*.py",
+    "tests/**/*.py"
+]
+
+[errors]
+missing-import = false

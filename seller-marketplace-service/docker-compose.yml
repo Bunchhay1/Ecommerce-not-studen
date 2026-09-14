@@ -1,0 +1,67 @@
+version: "3.8"
+
+services:
+  seller-marketplace-db:
+    image: postgres:16-alpine
+    container_name: seller-marketplace-postgres
+    environment:
+      POSTGRES_DB: seller_marketplace_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5445:5432"
+    volumes:
+      - seller_marketplace_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d seller_marketplace_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ecommerce-network
+
+  seller-marketplace-redis:
+    image: redis:7-alpine
+    container_name: seller-marketplace-redis
+    ports:
+      - "6392:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ecommerce-network
+
+  seller-marketplace-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: seller-marketplace-service
+    ports:
+      - "8014:8014"
+    environment:
+      - SERVER_PORT=8014
+      - DB_HOST=seller-marketplace-db
+      - DB_PORT=5432
+      - DB_NAME=seller_marketplace_db
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - REDIS_HOST=seller-marketplace-redis
+      - REDIS_PORT=6379
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      seller-marketplace-db:
+        condition: service_healthy
+      seller-marketplace-redis:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+
+volumes:
+  seller_marketplace_pgdata:
+
+networks:
+  ecommerce-network:
+    name: ecommerce-network
+    external: true

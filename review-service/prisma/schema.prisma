@@ -1,0 +1,171 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ReviewStatus {
+  PENDING
+  PUBLISHED
+  REJECTED
+  HIDDEN
+  DELETED
+  FLAGGED
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+enum VoteType {
+  HELPFUL
+  NOT_HELPFUL
+}
+
+enum ReportReason {
+  SPAM
+  OFFENSIVE
+  FAKE_REVIEW
+  ADVERTISING
+  IRRELEVANT
+  HARASSMENT
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+  DISMISSED
+}
+
+enum OutboxStatus {
+  PENDING
+  PUBLISHED
+  FAILED
+}
+
+model Review {
+  id               String       @id @default(uuid())
+  productId        String       @map("product_id")
+  variantId        String?      @map("variant_id")
+  userId           String       @map("user_id")
+  orderId          String?      @map("order_id")
+  orderItemId      String?      @map("order_item_id")
+  rating           Int          // 1 to 5
+  title            String
+  content          String       @db.Text
+  status           ReviewStatus @default(PENDING)
+  verifiedPurchase Boolean      @default(false) @map("verified_purchase")
+  helpfulCount     Int          @default(0) @map("helpful_count")
+  reportCount      Int          @default(0) @map("report_count")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+  publishedAt      DateTime?    @map("published_at")
+
+  media   ReviewMedia[]
+  votes   ReviewVote[]
+  reports ReviewReport[]
+
+  @@index([productId])
+  @@index([userId])
+  @@index([status])
+  @@index([orderItemId])
+  @@map("reviews")
+}
+
+model ProductRatingSummary {
+  productId     String   @id @map("product_id")
+  totalReviews  Int      @default(0) @map("total_reviews")
+  ratingSum     Int      @default(0) @map("rating_sum")
+  averageRating Float    @default(0.0) @map("average_rating")
+  rating1Count  Int      @default(0) @map("rating_1_count")
+  rating2Count  Int      @default(0) @map("rating_2_count")
+  rating3Count  Int      @default(0) @map("rating_3_count")
+  rating4Count  Int      @default(0) @map("rating_4_count")
+  rating5Count  Int      @default(0) @map("rating_5_count")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("product_rating_summaries")
+}
+
+model ReviewMedia {
+  id         String    @id @default(uuid())
+  reviewId   String    @map("review_id")
+  mediaType  MediaType @default(IMAGE) @map("media_type")
+  url        String
+  storageKey String?   @map("storage_key")
+  sortOrder  Int       @default(0) @map("sort_order")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId])
+  @@map("review_media")
+}
+
+model ReviewVote {
+  id        String   @id @default(uuid())
+  reviewId  String   @map("review_id")
+  userId    String   @map("user_id")
+  vote      VoteType @default(HELPFUL)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@unique([reviewId, userId])
+  @@map("review_votes")
+}
+
+model ReviewReport {
+  id          String       @id @default(uuid())
+  reviewId    String       @map("review_id")
+  userId      String       @map("user_id")
+  reason      ReportReason
+  description String?      @db.Text
+  status      ReportStatus @default(PENDING)
+  createdAt   DateTime     @default(now()) @map("created_at")
+  resolvedAt  DateTime?    @map("resolved_at")
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId])
+  @@index([status])
+  @@map("review_reports")
+}
+
+model ReviewPurchaseEligibility {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  orderId     String   @map("order_id")
+  orderItemId String   @map("order_item_id")
+  productId   String   @map("product_id")
+  eligible    Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, orderItemId])
+  @@index([userId, productId])
+  @@map("review_purchase_eligibility")
+}
+
+model OutboxEvent {
+  id            String       @id @default(uuid())
+  aggregateType String       @map("aggregate_type")
+  aggregateId   String       @map("aggregate_id")
+  eventType     String       @map("event_type")
+  payload       Json
+  status        OutboxStatus @default(PENDING)
+  retryCount    Int          @default(0) @map("retry_count")
+  errorMessage  String?      @map("error_message")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  publishedAt   DateTime?    @map("published_at")
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("outbox_events")
+}
