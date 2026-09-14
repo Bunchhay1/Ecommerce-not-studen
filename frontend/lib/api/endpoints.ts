@@ -33,7 +33,18 @@ export const API_ENDPOINTS = {
     INTENT: "/api/v1/payments/intents",
   },
   SHIPPING: {
-    TRACKING: (orderId: string) => `/api/v1/shipping/orders/${orderId}`,
+    RATES: "/api/v1/shipping/rates",
+    TRACKING: (trackingNumber: string) => `/api/v1/shipping/tracking/${trackingNumber}`,
+    ORDER: (orderId: string) => `/api/v1/shipping/orders/${orderId}`,
+  },
+  INVENTORY: {
+    VARIANT: (variantId: string) => `/api/v1/inventory/${variantId}`,
+    PRODUCT: (productId: string) => `/api/v1/inventory/product/${productId}`,
+    CHECK: "/api/v1/inventory/check",
+  },
+  NOTIFICATIONS: {
+    LIST: "/api/v1/notifications",
+    READ: (id: string) => `/api/v1/notifications/${id}/read`,
   },
   PRICING: {
     CALCULATE: "/api/v1/pricing/calculate",
@@ -44,13 +55,16 @@ export const API_ENDPOINTS = {
     CREATE: "/api/v1/reviews",
   },
   RECOMMENDATIONS: {
-    HOME: "/api/v1/recommendations/home",
-    SIMILAR: (productId: string) => `/api/v1/recommendations/products/${productId}/similar`,
+    HOME: "/api/v1/recommendations/trending",
+    TRENDING: "/api/v1/recommendations/trending",
+    PERSONALIZED: "/api/v1/recommendations/personalized",
+    SIMILAR: (productId: string) => `/api/v1/recommendations/similar/${productId}`,
   },
   SELLER: {
     ME: "/api/v1/sellers/me",
     LISTINGS: "/api/v1/sellers/me/listings",
     ORDERS: "/api/v1/sellers/me/orders",
+    STORE: (id: string) => `/api/v1/sellers/store/${id}`,
   },
   ADMIN: {
     DASHBOARD_SUMMARY: "/api/v1/admin/dashboard/summary",
@@ -60,5 +74,8 @@ export const API_ENDPOINTS = {
     SELLERS: "/api/v1/admin/sellers",
     PRODUCTS: "/api/v1/admin/catalog/products",
     ORDERS: "/api/v1/admin/orders",
+    PAYMENTS: "/api/v1/admin/payments",
+    INVENTORY: "/api/v1/admin/inventory",
+    AUDIT_LOGS: "/api/v1/admin/audit-logs",
   },
 };

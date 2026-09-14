@@ -1,9 +1,11 @@
 package com.example.order.client.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
 
 public class InventoryClientDto {
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ReserveStockRequestDto {
         private String orderId;
         private String idempotencyKey;
@@ -32,6 +34,7 @@ public class InventoryClientDto {
         public void setItems(List<ReserveItemDto> items) { this.items = items; }
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ReserveItemDto {
         private String variantId;
         private Integer quantity;
@@ -50,6 +53,7 @@ public class InventoryClientDto {
         public void setQuantity(Integer quantity) { this.quantity = quantity; }
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ReservationResponseDto {
         private String id;
         private String orderId;

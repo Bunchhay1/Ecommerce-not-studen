@@ -1,8 +1,10 @@
 package com.example.order.client.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.math.BigDecimal;
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class CartClientDto {
 
     private String id;
@@ -14,6 +16,7 @@ public class CartClientDto {
     public CartClientDto() {
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class CartItemClientDto {
         private String id;
         private String productId;

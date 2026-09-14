@@ -16,14 +16,14 @@ interface CheckoutState {
 }
 
 const defaultAddress: ShippingAddress = {
-  id: "addr-default",
-  fullName: "Alex Rivera",
-  street: "742 Evergreen Terrace",
-  city: "San Francisco",
-  state: "CA",
-  postalCode: "94107",
-  country: "United States",
-  phone: "+1 (555) 382-9102",
+  id: "addr-kh-default",
+  fullName: "Sok Dara",
+  street: "Street 214, Samdach Pan Ave",
+  city: "Phnom Penh",
+  state: "Phnom Penh",
+  postalCode: "12000",
+  country: "Cambodia",
+  phone: "+855 12 888 999",
 };
 
 export const useCheckoutStore = create<CheckoutState>((set) => ({

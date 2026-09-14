@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Store,
@@ -13,14 +13,63 @@ import {
   ArrowUpRight,
   TrendingUp,
 } from "lucide-react";
-import { MOCK_SELLER_PROFILE, MOCK_PRODUCTS, MOCK_ORDERS } from "@/lib/api/mockData";
+import { MOCK_SELLER_PROFILE, MOCK_PRODUCTS } from "@/lib/api/mockData";
 import { formatCurrency, formatDate } from "@/lib/utils/formatters";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { apiClient } from "@/lib/api/client";
+import { API_ENDPOINTS } from "@/lib/api/endpoints";
 
 export default function SellerDashboardPage() {
-  const seller = MOCK_SELLER_PROFILE;
-  const listings = MOCK_PRODUCTS.filter((p) => p.sellerId === seller.id || true).slice(0, 3);
+  const [seller, setSeller] = useState(MOCK_SELLER_PROFILE);
+  const [listings, setListings] = useState(MOCK_PRODUCTS.slice(0, 3));
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadSellerData() {
+      try {
+        const profileRes = await apiClient.get(API_ENDPOINTS.SELLER.ME);
+        if (profileRes.data?.data) {
+          const d = profileRes.data.data;
+          setSeller({
+            id: d.id,
+            userId: d.userId,
+            sellerCode: d.sellerCode || "SELLER-KH-001",
+            displayName: d.storeName || d.displayName || "Phnom Penh Computer Hub",
+            businessName: d.businessName || "Phnom Penh Computer Hub Co., Ltd.",
+            businessEmail: d.businessEmail || "bunly.rithy@phnompenhcomputer.kh",
+            status: "ACTIVE",
+            verificationStatus: "VERIFIED",
+            commissionRate: d.commissionRate || 8.5,
+            totalSales: d.totalSales || 18450.0,
+            rating: d.rating || 4.9,
+          });
+        }
+
+        const listingsRes = await apiClient.get(API_ENDPOINTS.SELLER.LISTINGS);
+        if (listingsRes.data?.data && Array.isArray(listingsRes.data.data) && listingsRes.data.data.length > 0) {
+          setListings(listingsRes.data.data.map((l: any) => ({
+            id: l.id || l.productId,
+            title: l.title || l.productName || "Product Listing",
+            price: Number(l.price || 0),
+            category: l.category || "Electronics",
+            rating: 4.9,
+            reviewCount: 14,
+            thumbnail: l.thumbnail || "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800",
+            variants: [],
+            sellerId: l.sellerId,
+            sellerName: l.sellerName,
+            isAvailable: true,
+          })));
+        }
+      } catch (err) {
+        console.warn("Seller dashboard live sync fallback:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadSellerData();
+  }, []);
 
   const stats = [
     { title: "Gross Marketplace Sales", value: formatCurrency(seller.totalSales), change: "+18.4% vs last month", icon: DollarSign },

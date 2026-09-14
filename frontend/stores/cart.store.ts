@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { CartItem } from "@/types/cart";
 import { Product, ProductVariant } from "@/types/product";
+import { apiClient } from "@/lib/api/client";
+import { API_ENDPOINTS } from "@/lib/api/endpoints";
 
 interface CartState {
   items: CartItem[];
@@ -14,21 +16,22 @@ interface CartState {
   clearCart: () => void;
   getItemCount: () => number;
   getSubtotal: () => number;
+  syncWithBackend: () => Promise<void>;
 }
 
 export const useCartStore = create<CartState>((set, get) => ({
   items: [
     {
       id: "cart-item-1",
-      productId: "prod-1",
-      variantId: "v1-1",
-      title: "QuantumPro Phone 17 Max Titanium",
-      sku: "QP17-256-BLK",
-      price: 1199.00,
+      productId: "prd-mbp-m3",
+      variantId: "var-mbp-m3",
+      title: "MacBook Pro 14 M3 Max (Phnom Penh Hub)",
+      sku: "SKU-MBP-14-M3-SB",
+      price: 1999.00,
       quantity: 1,
-      image: "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=400&auto=format&fit=crop&q=80",
-      attributes: { color: "Space Black", storage: "256GB" },
-      maxStock: 45,
+      image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800&auto=format&fit=crop&q=80",
+      attributes: { color: "Space Black", storage: "512GB" },
+      maxStock: 23,
     },
   ],
   isOpen: false,
@@ -40,6 +43,15 @@ export const useCartStore = create<CartState>((set, get) => ({
   addItem: (product: Product, variant?: ProductVariant, quantity = 1) => {
     const selectedVariant = variant || product.variants[0];
     const variantId = selectedVariant?.id || product.id;
+
+    // Fire-and-forget sync with backend Cart Service if authenticated
+    if (typeof window !== "undefined" && localStorage.getItem("accessToken")) {
+      apiClient.post(API_ENDPOINTS.CART.ITEMS, {
+        productId: product.id,
+        variantId,
+        quantity,
+      }).catch((err) => console.warn("Cart background sync:", err.message));
+    }
 
     set((state) => {
       const existingIndex = state.items.findIndex((i) => i.variantId === variantId);
@@ -67,6 +79,9 @@ export const useCartStore = create<CartState>((set, get) => ({
   },
 
   removeItem: (variantId: string) => {
+    if (typeof window !== "undefined" && localStorage.getItem("accessToken")) {
+      apiClient.delete(API_ENDPOINTS.CART.ITEM(variantId)).catch(() => {});
+    }
     set((state) => ({
       items: state.items.filter((i) => i.variantId !== variantId),
     }));
@@ -76,6 +91,10 @@ export const useCartStore = create<CartState>((set, get) => ({
     if (quantity <= 0) {
       get().removeItem(variantId);
       return;
+    }
+
+    if (typeof window !== "undefined" && localStorage.getItem("accessToken")) {
+      apiClient.patch(API_ENDPOINTS.CART.ITEM(variantId), { quantity }).catch(() => {});
     }
 
     set((state) => ({
@@ -94,4 +113,28 @@ export const useCartStore = create<CartState>((set, get) => ({
   getSubtotal: () => {
     return get().items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   },
+
+  syncWithBackend: async () => {
+    if (typeof window === "undefined" || !localStorage.getItem("accessToken")) return;
+    try {
+      const res = await apiClient.get(API_ENDPOINTS.CART.GET);
+      if (res.data?.data?.items && Array.isArray(res.data.data.items) && res.data.data.items.length > 0) {
+        const mapped = res.data.data.items.map((it: any) => ({
+          id: it.id || `cart-${it.variantId}`,
+          productId: it.productId,
+          variantId: it.variantId,
+          title: it.title || it.productName || "Cart Item",
+          sku: it.sku || it.variantId,
+          price: Number(it.price || it.unitPrice || 0),
+          quantity: Number(it.quantity || 1),
+          image: it.image || "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800",
+          maxStock: 50,
+        }));
+        set({ items: mapped });
+      }
+    } catch {
+      // Keep optimistic items
+    }
+  },
 }));
+

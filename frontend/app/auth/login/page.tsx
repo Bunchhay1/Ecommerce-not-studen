@@ -12,26 +12,36 @@ export default function LoginPage() {
   const router = useRouter();
   const login = useAuthStore((s) => s.login);
 
-  const [email, setEmail] = useState("alex.rivera@example.com");
-  const [password, setPassword] = useState("password123");
+  const [email, setEmail] = useState("sok.dara@synth-mail.kh");
+  const [password, setPassword] = useState("Password123!");
   const [selectedRole, setSelectedRole] = useState<"CUSTOMER" | "SELLER" | "ADMIN">("CUSTOMER");
   const [isLoading, setIsLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setTimeout(() => {
-      login(email, selectedRole);
+    setLoginError(null);
+    try {
+      const ok = await login(email, password, selectedRole);
+      if (ok) {
+        if (selectedRole === "SELLER") router.push("/seller/dashboard");
+        else if (selectedRole === "ADMIN") router.push("/admin/dashboard");
+        else router.push("/products");
+      } else {
+        setLoginError("Invalid credentials or server unavailable.");
+      }
+    } catch (err: any) {
+      setLoginError(err?.response?.data?.detail || "Authentication failed. Please check credentials.");
+    } finally {
       setIsLoading(false);
-      if (selectedRole === "SELLER") router.push("/seller/dashboard");
-      else if (selectedRole === "ADMIN") router.push("/admin/dashboard");
-      else router.push("/products");
-    }, 600);
+    }
   };
 
   const handleQuickRoleSelect = (role: "CUSTOMER" | "SELLER" | "ADMIN", demoEmail: string) => {
     setSelectedRole(role);
     setEmail(demoEmail);
+    setPassword("Password123!");
   };
 
   return (
@@ -44,19 +54,19 @@ export default function LoginPage() {
           </div>
           <h1 className="text-2xl font-black tracking-tight">Sign in to NovaMarket</h1>
           <p className="text-xs text-muted-foreground">
-            Connect via API Gateway #16 with JWT token authorization
+            Authenticated via API Gateway :8000 with JWT token authorization
           </p>
         </div>
 
         {/* Demo Fast-Switch Role Tabs */}
         <div className="space-y-1.5">
           <label className="text-xs font-semibold text-muted-foreground block text-center">
-            Quick-Select Persona (For Pair-Programming & Testing):
+            Quick-Select Seeded Persona (Cambodia Production Data):
           </label>
           <div className="grid grid-cols-3 gap-2">
             <button
               type="button"
-              onClick={() => handleQuickRoleSelect("CUSTOMER", "alex.rivera@example.com")}
+              onClick={() => handleQuickRoleSelect("CUSTOMER", "sok.dara@synth-mail.kh")}
               className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-center transition-all ${
                 selectedRole === "CUSTOMER"
                   ? "border-primary bg-primary/10 font-bold text-primary"
@@ -64,11 +74,11 @@ export default function LoginPage() {
               }`}
             >
               <User className="h-4 w-4 mb-1" />
-              <span className="text-[11px]">Customer</span>
+              <span className="text-[11px]">Customer (Dara)</span>
             </button>
             <button
               type="button"
-              onClick={() => handleQuickRoleSelect("SELLER", "auratech.store@market.com")}
+              onClick={() => handleQuickRoleSelect("SELLER", "bunly.rithy@phnompenhcomputer.kh")}
               className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-center transition-all ${
                 selectedRole === "SELLER"
                   ? "border-primary bg-primary/10 font-bold text-primary"
@@ -76,11 +86,11 @@ export default function LoginPage() {
               }`}
             >
               <Store className="h-4 w-4 mb-1" />
-              <span className="text-[11px]">Seller</span>
+              <span className="text-[11px]">Seller (Rithy)</span>
             </button>
             <button
               type="button"
-              onClick={() => handleQuickRoleSelect("ADMIN", "admin.super@market.com")}
+              onClick={() => handleQuickRoleSelect("ADMIN", "admin.boran@marketplace.kh")}
               className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-center transition-all ${
                 selectedRole === "ADMIN"
                   ? "border-primary bg-primary/10 font-bold text-primary"
@@ -88,10 +98,16 @@ export default function LoginPage() {
               }`}
             >
               <ShieldCheck className="h-4 w-4 mb-1" />
-              <span className="text-[11px]">Super Admin</span>
+              <span className="text-[11px]">Admin (Boran)</span>
             </button>
           </div>
         </div>
+
+        {loginError && (
+          <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive text-center font-semibold">
+            {loginError}
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
