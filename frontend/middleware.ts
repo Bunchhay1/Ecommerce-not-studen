@@ -18,7 +18,25 @@ export function middleware(request: NextRequest) {
 
   // Retrieve token and user role from cookies or headers
   const token = request.cookies.get("accessToken")?.value || request.headers.get("authorization");
-  const userRole = request.cookies.get("userRole")?.value || "CUSTOMER";
+  let userRole = request.cookies.get("userRole")?.value || "CUSTOMER";
+
+  // If JWT token is present, decode payload to extract authoritative role
+  if (token) {
+    try {
+      const rawToken = token.startsWith("Bearer ") ? token.slice(7) : token;
+      const parts = rawToken.split(".");
+      if (parts.length === 3) {
+        const payloadStr = atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"));
+        const payload = JSON.parse(payloadStr);
+        if (Array.isArray(payload.roles)) {
+          if (payload.roles.includes("ADMIN")) userRole = "ADMIN";
+          else if (payload.roles.includes("SELLER") && userRole !== "ADMIN") userRole = "SELLER";
+        }
+      }
+    } catch {
+      // Ignore token parse error
+    }
+  }
 
   // 1. Static and internal routes pass through automatically
   if (
@@ -37,9 +55,13 @@ export function middleware(request: NextRequest) {
     host.includes(":3001") ||
     host.startsWith("company.");
 
-  // If on Company Portal and visiting root '/', redirect to '/seller' or '/admin'
-  if (isCompanyPortal && pathname === "/") {
-    return NextResponse.redirect(new URL("/seller", request.url));
+  // If on Company Portal and visiting root '/', redirect to '/seller/dashboard'
+  if (isCompanyPortal && (pathname === "/" || pathname === "/seller")) {
+    return NextResponse.redirect(new URL("/seller/dashboard", request.url));
+  }
+
+  if (pathname === "/admin") {
+    return NextResponse.redirect(new URL("/admin/dashboard", request.url));
   }
 
   // 3. Public Storefront & Auth routes
