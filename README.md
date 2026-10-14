@@ -3,6 +3,7 @@
 A production-grade, enterprise-ready **Amazon-like multi-vendor E-Commerce Marketplace** featuring **2 separate frontends** (Customer Frontend + Company Frontend), **1 API Gateway**, and **15 backend microservices**. Built with clean domain boundaries, event-driven decoupling via **Apache Kafka**, sub-millisecond caching with **Redis**, and isolated single-service **PostgreSQL** databases.
 
 📖 **Authoritative Master Reference**: For the complete 50-section architectural specification, see **[`docs/COMPLETE_ARCHITECTURE.md`](file:///Users/chhay/Desktop/E-Commerce-Microservice/docs/COMPLETE_ARCHITECTURE.md)**.
+🚀 **Master Operational Runbook**: For step-by-step local execution of all 17 microservices & infrastructure, see **[`docs/RUNNING_SERVICES_MASTER_RUNBOOK.md`](file:///Users/chhay/Desktop/E-Commerce-Microservice/docs/RUNNING_SERVICES_MASTER_RUNBOOK.md)**.
 🎨 **Frontend Multi-Actor Reference**: For role separation, route protection, and UX matrix, see **[`docs/FRONTEND_ARCHITECTURE.md`](file:///Users/chhay/Desktop/E-Commerce-Microservice/docs/FRONTEND_ARCHITECTURE.md)**.
 
 ---
@@ -133,6 +134,7 @@ npm run dev -- -p 3001
 ---
 
 ## 📚 Complete Architectural Documentation
+- [Developer Workflow & Operations Guide (M3 Pro & Cambodia)](file:///Users/chhay/Desktop/E-Commerce-Microservice/docs/DEVELOPMENT_GUIDE.md)
 - [Authoritative 50-Section Architecture Specification](file:///Users/chhay/Desktop/E-Commerce-Microservice/docs/COMPLETE_ARCHITECTURE.md)
 - [UI / API Integration & Service Ownership Matrix](file:///Users/chhay/Desktop/E-Commerce-Microservice/docs/UI_API_INTEGRATION.md)
 - [Cambodia Production Seed Data Specification](file:///Users/chhay/Desktop/E-Commerce-Microservice/docs/CAMBODIA_PRODUCTION_SEED_DATA.md)
