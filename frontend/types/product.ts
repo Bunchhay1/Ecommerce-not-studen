@@ -14,7 +14,12 @@ export interface Product {
   slug: string;
   description: string;
   category: string;
+  categoryId?: string;
+  categorySlug?: string;
+  categoryParentId?: string;
   brand: string;
+  brandId?: string;
+  brandSlug?: string;
   price: number;
   originalPrice?: number;
   images: string[];
@@ -31,6 +36,7 @@ export interface Product {
 
 export interface Category {
   id: string;
+  parentId?: string | null;
   name: string;
   slug: string;
   description?: string;
