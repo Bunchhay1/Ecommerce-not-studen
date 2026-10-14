@@ -14,10 +14,10 @@ public class ProductAttribute {
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
-    @Column(nullable = false, length = 100)
+    @Column(name = "attribute_name", nullable = false, length = 100)
     private String name;
 
-    @Column(columnDefinition = "TEXT", nullable = false)
+    @Column(name = "attribute_value", columnDefinition = "TEXT", nullable = false)
     private String value;
 
     public ProductAttribute() {}
