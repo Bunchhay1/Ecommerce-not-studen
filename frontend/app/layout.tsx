@@ -8,8 +8,8 @@ import { CartDrawer } from "@/components/layout/cart-drawer";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "NovaMarket | Distributed Microservices Marketplace",
-  description: "Next-generation distributed e-commerce platform connected via Go API Gateway.",
+  title: "BC-Market | Distributed Microservices Marketplace",
+  description: "Next-generation Cambodian distributed e-commerce platform connected via Go API Gateway.",
 };
 
 export default function RootLayout({
