@@ -24,6 +24,8 @@ import { useAuthStore } from "@/stores/auth.store";
 import { useUIStore } from "@/stores/ui.store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { NotificationDropdown } from "./notification-dropdown";
+import { Logo } from "@/components/ui/logo";
 
 export function Navbar() {
   const pathname = usePathname();
@@ -70,19 +72,7 @@ export function Navbar() {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand Logo */}
         <div className="flex items-center gap-6">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-primary to-indigo-500 shadow-md shadow-primary/20 transition-transform group-hover:scale-105">
-              <Compass className="h-5 w-5 text-white" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-lg font-black tracking-tight leading-none text-foreground">
-                NOVA<span className="text-primary">MARKET</span>
-              </span>
-              <span className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
-                Enterprise
-              </span>
-            </div>
-          </Link>
+          <Logo href="/" />
 
           {/* Desktop Navigation Links */}
           <nav className="hidden md:flex items-center gap-1">
@@ -160,13 +150,16 @@ export function Navbar() {
 
           {/* Quick Search */}
           <Link href="/search">
-            <Button size="icon" variant="ghost" className="h-9 w-9 text-muted-foreground">
+            <Button size="icon" variant="ghost" className="h-9 w-9 text-muted-foreground hover:text-foreground">
               <Search className="h-4 w-4" />
             </Button>
           </Link>
 
+          {/* Real-Time Notification Bell & Dropdown (Section 37) */}
+          <NotificationDropdown />
+
           {/* Theme Toggle */}
-          <Button size="icon" variant="ghost" className="h-9 w-9 text-muted-foreground" onClick={toggleTheme}>
+          <Button size="icon" variant="ghost" className="h-9 w-9 text-muted-foreground hover:text-foreground" onClick={toggleTheme}>
             {theme === "dark" ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4" />}
           </Button>
 
@@ -174,7 +167,7 @@ export function Navbar() {
           <Button
             size="icon"
             variant="ghost"
-            className="relative h-9 w-9 text-muted-foreground"
+            className="relative h-9 w-9 text-muted-foreground hover:text-foreground"
             onClick={toggleCart}
           >
             <ShoppingBag className="h-4 w-4" />
