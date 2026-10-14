@@ -24,9 +24,23 @@ export function ProductCard({ product }: ProductCardProps) {
     ? (product.brand as any).name
     : (product.brand || (typeof product.category === "object" ? (product.category as any)?.name : product.category) || "Authentic Cambodia");
 
-  const imageUrl = Array.isArray(product.images) && product.images.length > 0
-    ? (typeof product.images[0] === "object" && product.images[0] !== null ? (product.images[0] as any).url : product.images[0])
-    : (product.thumbnail || "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80");
+  const getImgSrc = (img: any): string | null => {
+    if (!img) return null;
+    if (typeof img === "string") return img;
+    return img.imageUrl || img.image_url || img.url || null;
+  };
+
+  const rawImg = Array.isArray(product.images) && product.images.length > 0 
+    ? getImgSrc(product.images[0]) 
+    : null;
+
+  const defaultFallback = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80";
+  const initialImg = rawImg || product.thumbnail || defaultFallback;
+  const [imgSrc, setImgSrc] = React.useState<string>(initialImg);
+
+  React.useEffect(() => {
+    setImgSrc(initialImg);
+  }, [initialImg]);
 
   const khrPrice = Math.round((product.price || 0) * 4100).toLocaleString();
 
@@ -40,8 +54,9 @@ export function ProductCard({ product }: ProductCardProps) {
       <div className="relative aspect-square w-full overflow-hidden bg-muted/40">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={imageUrl}
+          src={imgSrc}
           alt={title}
+          onError={() => setImgSrc(defaultFallback)}
           className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
         />
 
