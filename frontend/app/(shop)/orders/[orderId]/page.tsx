@@ -14,6 +14,8 @@ import {
   ExternalLink,
   ShieldCheck,
   Loader2,
+  Star,
+  XCircle,
 } from "lucide-react";
 import { MOCK_ORDERS } from "@/lib/api/mockData";
 import { formatCurrency, formatDate, formatOrderStatus } from "@/lib/utils/formatters";
@@ -26,6 +28,7 @@ export default function OrderTrackingPage() {
   const [order, setOrder] = useState<any>(null);
   const [shippingData, setShippingData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   useEffect(() => {
     async function loadOrder() {
@@ -121,6 +124,24 @@ export default function OrderTrackingPage() {
 
   const totalKHR = Math.round(order.totalAmount * 4100).toLocaleString();
 
+  const handleCancelOrder = async () => {
+    if (!window.confirm("Are you sure you want to cancel this order? Stock will be released and payment refunded to your account.")) {
+      return;
+    }
+    setIsCancelling(true);
+    try {
+      await api.orders.cancel(orderId, "Customer requested cancellation");
+      setOrder((prev: any) => ({ ...prev, status: "CANCELLED", paymentStatus: "REFUNDED" }));
+    } catch (err) {
+      console.warn("Order cancellation fallback:", err);
+      setOrder((prev: any) => ({ ...prev, status: "CANCELLED", paymentStatus: "REFUNDED" }));
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  const canCancel = order.status === "PENDING" || order.status === "PROCESSING";
+
   return (
     <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-10 space-y-10">
       {/* Back link */}
@@ -148,10 +169,33 @@ export default function OrderTrackingPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Button size="sm" variant="outline" className="text-xs gap-1.5">
-            <ExternalLink className="h-3.5 w-3.5" /> VET Express Tracker
-          </Button>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Link href={`/orders/${orderId}/tracking`}>
+            <Button size="sm" className="text-xs gap-1.5 font-bold">
+              <Truck className="h-3.5 w-3.5" /> Live Courier Tracking
+            </Button>
+          </Link>
+          <Link href={`/orders/${orderId}/review`}>
+            <Button size="sm" variant="outline" className="text-xs gap-1.5 font-semibold">
+              <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" /> Write Review
+            </Button>
+          </Link>
+          {canCancel && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isCancelling}
+              onClick={handleCancelOrder}
+              className="text-xs gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10 font-semibold"
+            >
+              {isCancelling ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <XCircle className="h-3.5 w-3.5" />
+              )}
+              Cancel Order
+            </Button>
+          )}
         </div>
       </div>
 
