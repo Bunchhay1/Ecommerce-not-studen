@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -17,9 +17,10 @@ import {
   MessageSquare,
   Star,
   Send,
+  Loader2,
+  PackageSearch,
 } from "lucide-react";
 import { Product } from "@/types/product";
-import { MOCK_PRODUCTS } from "@/lib/api/mockData";
 import { mapToProduct } from "@/lib/api/productMapper";
 import { apiClient } from "@/lib/api/client";
 import { API_ENDPOINTS } from "@/lib/api/endpoints";
@@ -34,48 +35,91 @@ import { useCartStore } from "@/stores/cart.store";
 export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const productId = params?.productId as string;
+  const productId = decodeURIComponent((params?.productId as string) || "");
   const addItem = useCartStore((s) => s.addItem);
 
-  const [product, setProduct] = useState<Product>(() => {
-    return (
-      MOCK_PRODUCTS.find((p) => p.id === productId || p.slug === productId) ||
-      MOCK_PRODUCTS[0]
-    );
-  });
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // 1. Catalog Service Integration
-  useEffect(() => {
-    async function fetchDetail() {
-      if (!productId) return;
-      try {
-        const res = await apiClient.get(API_ENDPOINTS.CATALOG.PRODUCT_DETAIL(productId));
-        if (res.data?.data) {
-          setProduct(mapToProduct(res.data.data));
-        }
-      } catch (err) {
-        console.warn("Using fallback product details:", err);
-      }
-    }
-    fetchDetail();
-  }, [productId]);
-
-  const [selectedImage, setSelectedImage] = useState<string>(product.images[0] || product.thumbnail);
+  const [selectedImage, setSelectedImage] = useState<string>("");
   const [selectedVariantIndex, setSelectedVariantIndex] = useState<number>(0);
   const [quantity, setQuantity] = useState<number>(1);
   const [addedToast, setAddedToast] = useState(false);
 
+  // 1. Fetch Product Details & Price
   useEffect(() => {
-    if (product.images && product.images.length > 0) {
-      setSelectedImage(product.images[0]);
-    }
-  }, [product]);
+    async function fetchDetail() {
+      if (!productId) return;
+      setLoading(true);
+      setError(null);
 
-  const selectedVariant = product.variants[selectedVariantIndex] || product.variants[0];
+      try {
+        // Fetch prices in parallel
+        const priceResPromise = apiClient.get(`${API_ENDPOINTS.PRICING.PRICES}?skip=0&limit=500`).catch(() => null);
+
+        // Fetch product by ID or Slug
+        let productData: any = null;
+        try {
+          const res = await apiClient.get(API_ENDPOINTS.CATALOG.PRODUCT_DETAIL(productId));
+          if (res.data?.data) {
+            productData = res.data.data;
+          }
+        } catch {
+          // If ID lookup fails, try slug lookup
+          try {
+            const slugRes = await apiClient.get(`/api/v1/products/slug/${productId}`);
+            if (slugRes.data?.data) {
+              productData = slugRes.data.data;
+            }
+          } catch {
+            productData = null;
+          }
+        }
+
+        const priceRes = await priceResPromise;
+        const priceMap: Record<string, { price: number; originalPrice: number }> = {};
+        if (priceRes && priceRes.data) {
+          const pricesData = Array.isArray(priceRes.data)
+            ? priceRes.data
+            : Array.isArray(priceRes.data?.data)
+            ? priceRes.data.data
+            : [];
+          pricesData.forEach((item: any) => {
+            if (item.productId) {
+              const sp = parseFloat(item.salePrice || item.sale_price) || 0;
+              const bp = parseFloat(item.basePrice || item.base_price) || sp;
+              priceMap[item.productId] = { price: sp || bp, originalPrice: bp };
+            }
+          });
+        }
+
+        if (productData) {
+          const mapped = mapToProduct(productData, priceMap);
+          setProduct(mapped);
+          setSelectedImage(mapped.images[0] || mapped.thumbnail);
+          setSelectedVariantIndex(0);
+        } else {
+          setError("Product not found");
+        }
+      } catch (err: any) {
+        console.error("Failed to load product details:", err);
+        setError("Unable to load product information.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchDetail();
+  }, [productId]);
+
+  const selectedVariant = useMemo(() => {
+    if (!product || !product.variants || product.variants.length === 0) return undefined;
+    return product.variants[selectedVariantIndex] || product.variants[0];
+  }, [product, selectedVariantIndex]);
 
   // 2. Real-Time Inventory Service Integration
-  const [availableStock, setAvailableStock] = useState<number>(23);
-  const [stockStatus, setStockStatus] = useState<string>("IN_STOCK");
+  const [availableStock, setAvailableStock] = useState<number>(45);
 
   useEffect(() => {
     async function fetchInventory() {
@@ -83,15 +127,14 @@ export default function ProductDetailPage() {
       try {
         const res = await apiClient.get(API_ENDPOINTS.INVENTORY.VARIANT(selectedVariant.id));
         if (res.data?.data) {
-          setAvailableStock(res.data.data.availableQuantity ?? 23);
-          setStockStatus(res.data.data.status ?? "IN_STOCK");
+          setAvailableStock(res.data.data.availableQuantity ?? 45);
         }
       } catch {
-        // Retain optimistic stock
+        setAvailableStock(selectedVariant.availableStock || 45);
       }
     }
     fetchInventory();
-  }, [selectedVariant?.id]);
+  }, [selectedVariant]);
 
   // 3. Review Service Integration
   const [reviews, setReviews] = useState<any[]>([]);
@@ -104,66 +147,76 @@ export default function ProductDetailPage() {
 
   useEffect(() => {
     async function fetchReviews() {
-      if (!productId) return;
+      if (!product?.id) return;
       try {
-        const res = await apiClient.get(API_ENDPOINTS.REVIEWS.LIST(productId));
+        const res = await apiClient.get(API_ENDPOINTS.REVIEWS.LIST(product.id));
         if (res.data?.reviews) {
           setReviews(res.data.reviews);
           setRatingSummary(res.data.ratingSummary);
         }
       } catch {
-        // Fallback reviews
+        // No reviews
       }
     }
     fetchReviews();
-  }, [productId]);
+  }, [product?.id]);
 
-  // 4. Recommendation Service Integration
+  // 4. Recommendation / Similar Products
   const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
   useEffect(() => {
     async function fetchRecs() {
+      if (!product) return;
       try {
-        const res = await apiClient.get(API_ENDPOINTS.RECOMMENDATIONS.SIMILAR(productId));
-        if (res.data?.items && res.data.items.length > 0) {
-          setRecommendedProducts(res.data.items.map(mapToProduct));
-        } else {
-          setRecommendedProducts(MOCK_PRODUCTS.filter((p) => p.id !== productId).slice(0, 3));
+        const res = await apiClient.get(
+          product.categoryId
+            ? `${API_ENDPOINTS.CATALOG.PRODUCTS}?categoryId=${product.categoryId}&page=0&size=4`
+            : `${API_ENDPOINTS.CATALOG.PRODUCTS}?page=0&size=4`
+        );
+        const rawList = res.data?.data?.content || res.data?.data?.items || [];
+        if (Array.isArray(rawList) && rawList.length > 0) {
+          const mapped = rawList
+            .map((p: any) => mapToProduct(p))
+            .filter((p: Product) => p.id !== product.id)
+            .slice(0, 3);
+          setRecommendedProducts(mapped);
         }
       } catch {
-        setRecommendedProducts(MOCK_PRODUCTS.filter((p) => p.id !== productId).slice(0, 3));
+        // Ignore fallback recs
       }
     }
     fetchRecs();
-  }, [productId]);
+  }, [product]);
 
   const handleAddToCart = () => {
+    if (!product) return;
     addItem(product, selectedVariant, quantity);
     setAddedToast(true);
     setTimeout(() => setAddedToast(false), 2500);
   };
 
   const handleBuyNow = () => {
+    if (!product) return;
     addItem(product, selectedVariant, quantity);
     router.push("/checkout");
   };
 
   const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!reviewContent) return;
+    if (!reviewContent || !product) return;
     setIsSubmittingReview(true);
     try {
       await apiClient.post(API_ENDPOINTS.REVIEWS.CREATE, {
-        productId,
-        variantId: selectedVariant?.id || "var-mbp-m3",
+        productId: product.id,
+        variantId: selectedVariant?.id || "var-default",
         rating: reviewRating,
         title: reviewTitle || "Great Product",
         content: reviewContent,
       });
-      setReviewSuccessMsg("Review submitted successfully! Thank you for supporting Cambodian merchants.");
+      setReviewSuccessMsg("Review submitted successfully! Thank you.");
       setReviewTitle("");
       setReviewContent("");
       // Refresh reviews
-      const res = await apiClient.get(API_ENDPOINTS.REVIEWS.LIST(productId));
+      const res = await apiClient.get(API_ENDPOINTS.REVIEWS.LIST(product.id));
       if (res.data?.reviews) {
         setReviews(res.data.reviews);
         setRatingSummary(res.data.ratingSummary);
@@ -176,12 +229,39 @@ export default function ProductDetailPage() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 flex flex-col items-center justify-center space-y-4">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="text-sm font-semibold text-muted-foreground">Loading verified product details...</p>
+      </div>
+    );
+  }
+
+  if (error || !product) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 text-center space-y-4">
+        <PackageSearch className="h-16 w-16 text-muted-foreground mx-auto" />
+        <h2 className="text-2xl font-bold">Product Not Found</h2>
+        <p className="text-sm text-muted-foreground max-w-md mx-auto">
+          The product you are looking for might have been moved or is currently unavailable.
+        </p>
+        <Link href="/products">
+          <Button variant="default" className="font-bold gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Marketplace Catalog
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
   const khrPrice = Math.round((selectedVariant?.price || product.price || 0) * 4100).toLocaleString();
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-12">
-      {/* Back button */}
-      <div>
+      {/* Back button & Breadcrumbs */}
+      <div className="flex items-center justify-between">
         <Link
           href="/products"
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
@@ -189,6 +269,9 @@ export default function ProductDetailPage() {
           <ArrowLeft className="h-4 w-4" />
           Back to all products
         </Link>
+        <span className="text-xs font-medium text-muted-foreground">
+          Category: <strong className="text-foreground">{product.category}</strong>
+        </span>
       </div>
 
       {/* Main Showcase Grid */}
@@ -200,12 +283,15 @@ export default function ProductDetailPage() {
             <img
               src={selectedImage || product.images[0] || product.thumbnail}
               alt={product.title}
+              onError={(e) => {
+                e.currentTarget.src = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80";
+              }}
               className="h-full w-full object-cover object-center transition-all duration-300"
             />
           </div>
 
           {/* Thumbnails */}
-          {product.images.length > 1 && (
+          {product.images && product.images.length > 1 && (
             <div className="flex gap-3 overflow-x-auto pb-2">
               {product.images.map((img, idx) => (
                 <button
@@ -213,12 +299,19 @@ export default function ProductDetailPage() {
                   onClick={() => setSelectedImage(img)}
                   className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border-2 transition-all ${
                     selectedImage === img
-                      ? "border-primary shadow-md"
-                      : "border-border/50 hover:border-border"
+                      ? "border-primary shadow-md scale-105"
+                      : "border-border/50 hover:border-border opacity-70 hover:opacity-100"
                   }`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={img} alt="thumbnail" className="h-full w-full object-cover" />
+                  <img
+                    src={img}
+                    alt="thumbnail"
+                    onError={(e) => {
+                      e.currentTarget.src = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80";
+                    }}
+                    className="h-full w-full object-cover"
+                  />
                 </button>
               ))}
             </div>
@@ -232,19 +325,23 @@ export default function ProductDetailPage() {
               <Badge variant="secondary" className="text-xs font-semibold">
                 {product.category}
               </Badge>
-              {product.sellerName && (
+              {product.brand && (
                 <span className="text-xs text-muted-foreground">
-                  Sold by <span className="font-semibold text-primary">{product.sellerName}</span>
+                  Brand: <strong className="text-primary font-bold">{product.brand}</strong>
                 </span>
               )}
             </div>
 
-            <h1 className="mt-2 text-3xl sm:text-4xl font-black tracking-tight text-foreground">
+            <h1 className="mt-2 text-3xl sm:text-4xl font-black tracking-tight text-foreground leading-tight">
               {product.title}
             </h1>
 
             <div className="mt-3 flex items-center gap-4">
-              <RatingStars rating={ratingSummary?.average || product.rating} reviewCount={ratingSummary?.totalReviews || product.reviewCount} size="md" />
+              <RatingStars
+                rating={ratingSummary?.average || product.rating || 4.9}
+                reviewCount={ratingSummary?.totalReviews || product.reviewCount || 98}
+                size="md"
+              />
               <span className="text-xs text-muted-foreground">•</span>
               {availableStock > 0 ? (
                 <span className="text-xs font-semibold text-emerald-500 flex items-center gap-1">
@@ -278,7 +375,7 @@ export default function ProductDetailPage() {
           </p>
 
           {/* Variants selector */}
-          {product.variants.length > 1 && (
+          {product.variants && product.variants.length > 1 && (
             <div className="space-y-3">
               <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Select Variant / SKU:
@@ -290,7 +387,7 @@ export default function ProductDetailPage() {
                     onClick={() => setSelectedVariantIndex(idx)}
                     className={`rounded-xl border px-4 py-2 text-xs font-semibold transition-all ${
                       selectedVariantIndex === idx
-                        ? "border-primary bg-primary/10 text-primary shadow-sm"
+                        ? "border-primary bg-primary/10 text-primary shadow-sm font-bold"
                         : "border-border/60 bg-card/40 text-muted-foreground hover:border-border"
                     }`}
                   >
@@ -344,20 +441,20 @@ export default function ProductDetailPage() {
             {addedToast && (
               <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-400 font-semibold text-center flex items-center justify-center gap-2">
                 <CheckCircle className="h-4 w-4 shrink-0" />
-                Added to cart! Synchronized with Cart Service.
+                Added {quantity} item(s) to cart! Synchronized with Cart Service.
               </div>
             )}
           </div>
 
-          {/* Value props & Cambodia Carrier SLAs */}
+          {/* Value props & Delivery SLAs */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-border/40">
             <div className="flex items-center gap-2.5 text-xs text-muted-foreground">
               <ShieldCheck className="h-4 w-4 text-emerald-500 shrink-0" />
-              <span>Verified Cambodian Merchant</span>
+              <span>Official Warranty Guarantee</span>
             </div>
             <div className="flex items-center gap-2.5 text-xs text-muted-foreground">
               <Truck className="h-4 w-4 text-primary shrink-0" />
-              <span>VET Express / J&T Delivery</span>
+              <span>Express Logistics Delivery</span>
             </div>
             <div className="flex items-center gap-2.5 text-xs text-muted-foreground">
               <RotateCcw className="h-4 w-4 text-amber-500 shrink-0" />
@@ -367,7 +464,7 @@ export default function ProductDetailPage() {
         </div>
       </div>
 
-      {/* Customer Reviews Section (Review Service Integration) */}
+      {/* Customer Reviews Section */}
       <section className="space-y-6 pt-10 border-t border-border/60">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
@@ -376,7 +473,7 @@ export default function ProductDetailPage() {
               <h2 className="text-xl font-bold tracking-tight">Customer Reviews & Ratings</h2>
             </div>
             <p className="text-xs text-muted-foreground">
-              Synchronized live with Review Service #11 • Verified Purchases in Cambodia
+              Verified customer feedback and product ratings
             </p>
           </div>
           {ratingSummary && (
@@ -398,7 +495,7 @@ export default function ProductDetailPage() {
                     <span className="text-xs font-bold text-foreground">{rev.title}</span>
                   </div>
                   {rev.verifiedPurchase && (
-                    <Badge variant="success" className="text-[10px] gap-1">
+                    <Badge variant="default" className="text-[10px] gap-1 bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
                       <CheckCircle className="h-3 w-3" /> Verified Buyer
                     </Badge>
                   )}
@@ -408,8 +505,8 @@ export default function ProductDetailPage() {
             ))
           ) : (
             <div className="rounded-2xl border border-dashed border-border/60 p-8 text-center space-y-2">
-              <p className="text-sm font-semibold">No reviews yet for this product.</p>
-              <p className="text-xs text-muted-foreground">Be the first verified customer in Cambodia to share your thoughts!</p>
+              <p className="text-sm font-semibold">No customer reviews yet for this product.</p>
+              <p className="text-xs text-muted-foreground">Be the first verified customer to share your thoughts!</p>
             </div>
           )}
         </div>
@@ -422,7 +519,7 @@ export default function ProductDetailPage() {
           <form onSubmit={handleReviewSubmit} className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input
-                placeholder="Review Headline (e.g. Fast delivery in Phnom Penh)"
+                placeholder="Review Headline (e.g. Excellent build quality)"
                 value={reviewTitle}
                 onChange={(e) => setReviewTitle(e.target.value)}
                 className="text-xs rounded-xl"
@@ -444,7 +541,7 @@ export default function ProductDetailPage() {
               </div>
             </div>
             <textarea
-              placeholder="Share your experience with the product, delivery via VET/J&T, and warranty..."
+              placeholder="Share your experience with the product..."
               value={reviewContent}
               onChange={(e) => setReviewContent(e.target.value)}
               rows={3}
@@ -464,14 +561,14 @@ export default function ProductDetailPage() {
         </div>
       </section>
 
-      {/* Similar Cambodian Products (Recommendation Service Integration) */}
+      {/* Similar Products */}
       {recommendedProducts.length > 0 && (
         <section className="space-y-6 pt-10 border-t border-border/60">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
             <div>
-              <h2 className="text-xl font-bold tracking-tight">Recommended by AI Engine</h2>
-              <p className="text-xs text-muted-foreground">Powered by Recommendation Service #13 ML Content Similarity</p>
+              <h2 className="text-xl font-bold tracking-tight">More in {product.category}</h2>
+              <p className="text-xs text-muted-foreground">Explore related authentic selections</p>
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
