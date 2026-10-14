@@ -7,6 +7,7 @@ import { Compass, Lock, Mail, ArrowRight, ShieldCheck, Store, User } from "lucid
 import { useAuthStore } from "@/stores/auth.store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Logo } from "@/components/ui/logo";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -49,10 +50,10 @@ export default function LoginPage() {
       <div className="w-full max-w-md space-y-8 rounded-3xl border border-border/70 bg-card/60 p-8 shadow-2xl backdrop-blur-xl">
         {/* Header */}
         <div className="text-center space-y-2">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-primary to-indigo-500 text-white shadow-lg shadow-primary/25">
-            <Compass className="h-6 w-6" />
+          <div className="flex justify-center mb-3">
+            <Logo size="lg" showSubtitle={false} />
           </div>
-          <h1 className="text-2xl font-black tracking-tight">Sign in to NovaMarket</h1>
+          <h1 className="text-2xl font-black tracking-tight">Sign in to BC-Market</h1>
           <p className="text-xs text-muted-foreground">
             Authenticated via API Gateway :8000 with JWT token authorization
           </p>
@@ -126,7 +127,15 @@ export default function LoginPage() {
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-muted-foreground">Password</label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-muted-foreground">Password</label>
+              <Link
+                href="/auth/forgot-password"
+                className="text-[11px] font-semibold text-primary hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
             <div className="relative">
               <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
