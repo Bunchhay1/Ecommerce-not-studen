@@ -50,6 +50,19 @@ func NewReverseProxyHandler(
 	proxy := httputil.NewSingleHostReverseProxy(target)
 	proxy.Transport = DefaultTransport
 
+	proxy.ModifyResponse = func(resp *http.Response) error {
+		// Strip downstream CORS and security headers to prevent browser duplication errors
+		resp.Header.Del("Access-Control-Allow-Origin")
+		resp.Header.Del("Access-Control-Allow-Credentials")
+		resp.Header.Del("Access-Control-Allow-Methods")
+		resp.Header.Del("Access-Control-Allow-Headers")
+		resp.Header.Del("Access-Control-Expose-Headers")
+		resp.Header.Del("Access-Control-Max-Age")
+		resp.Header.Del("X-Content-Type-Options")
+		resp.Header.Del("X-Frame-Options")
+		return nil
+	}
+
 	originalDirector := proxy.Director
 	proxy.Director = func(req *http.Request) {
 		originalDirector(req)
