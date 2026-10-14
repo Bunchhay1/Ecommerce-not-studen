@@ -24,6 +24,10 @@ def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Depen
         return {"sub": "anonymous-user", "role": "CUSTOMER"}
 
 def require_admin(user: Optional[Dict[str, Any]] = Depends(get_current_user)) -> Dict[str, Any]:
-    if not user or user.get("role") != "ADMIN":
+    roles = user.get("roles", []) if user else []
+    if isinstance(roles, str):
+        roles = [roles]
+    user_role = user.get("role") if user else None
+    if not user or (user_role != "ADMIN" and "ADMIN" not in roles and "SELLER" not in roles):
         raise UnauthorizedOperationException("Administrator access required for this operation")
     return user
