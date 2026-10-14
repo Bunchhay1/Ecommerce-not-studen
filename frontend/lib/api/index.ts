@@ -19,6 +19,14 @@ export const api = {
       const res = await apiClient.post(API_ENDPOINTS.AUTH.REFRESH, { refreshToken });
       return res.data;
     },
+    forgotPassword: async (email: string) => {
+      const res = await apiClient.post(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, { email });
+      return res.data;
+    },
+    resetPassword: async (data: { token: string; newPassword: string }) => {
+      const res = await apiClient.post(API_ENDPOINTS.AUTH.RESET_PASSWORD, data);
+      return res.data;
+    },
   },
 
   users: {
