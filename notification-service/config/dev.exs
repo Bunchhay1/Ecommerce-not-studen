@@ -1,17 +1,22 @@
 import Config
 
+port = String.to_integer(System.get_env("PORT") || "8012")
+db_port = String.to_integer(System.get_env("DB_PORT") || "5432")
+db_user = System.get_env("DB_USER") || "postgres"
+db_password = System.get_env("DB_PASSWORD") || "postgres"
+
 config :notification_service, NotificationService.Repo,
-  username: "notification_user",
-  password: "notification_password",
+  username: db_user,
+  password: db_password,
   hostname: "localhost",
-  port: 5443,
+  port: db_port,
   database: "notification_db",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10
 
 config :notification_service, NotificationServiceWeb.Endpoint,
-  http: [ip: {0, 0, 0, 0}, port: 8092],
+  http: [ip: {0, 0, 0, 0}, port: port],
   check_origin: false,
   code_reloader: false,
   debug_errors: true,
@@ -20,3 +25,4 @@ config :notification_service, NotificationServiceWeb.Endpoint,
 config :logger, :console, format: "[$level] $message\n"
 config :phoenix, :stacktrace_depth, 20
 config :phoenix, :plug_init_mode, :runtime
+
