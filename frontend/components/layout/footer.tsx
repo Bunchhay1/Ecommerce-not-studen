@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { Compass, ShieldCheck, Zap, Truck, Headphones } from "lucide-react";
+import { Logo } from "@/components/ui/logo";
 
 export function Footer() {
   const valueProps = [
@@ -33,13 +34,8 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
           <div>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-white">
-                <Compass className="h-4 w-4" />
-              </div>
-              <span className="font-extrabold tracking-tight text-foreground">
-                NOVA<span className="text-primary">MARKET</span>
-              </span>
+            <div className="mb-4">
+              <Logo size="sm" />
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
               Resilient distributed e-commerce platform running across 16 microservices with unified Go API Gateway.
@@ -78,7 +74,7 @@ export function Footer() {
         </div>
 
         <div className="mt-12 border-t border-border/40 pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-muted-foreground gap-4">
-          <p>© 2026 NovaMarket Microservices Ecosystem. All rights reserved.</p>
+          <p>© 2026 BC-Market Microservices Ecosystem. All rights reserved.</p>
           <div className="flex gap-4">
             <span>Security Compliant</span>
             <span>PCI-DSS Tokenized</span>
