@@ -14,10 +14,10 @@ public class VariantAttribute {
     @JoinColumn(name = "variant_id", nullable = false)
     private ProductVariant variant;
 
-    @Column(nullable = false, length = 100)
+    @Column(name = "attribute_name", nullable = false, length = 100)
     private String name;
 
-    @Column(nullable = false, length = 100)
+    @Column(name = "attribute_value", nullable = false, length = 100)
     private String value;
 
     public VariantAttribute() {}
