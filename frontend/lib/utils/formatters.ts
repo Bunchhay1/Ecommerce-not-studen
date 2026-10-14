@@ -1,9 +1,20 @@
+export const KHR_RATE = 4100;
+
 export function formatCurrency(amount: number, currency: string = "USD"): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
     minimumFractionDigits: 2,
   }).format(amount);
+}
+
+export function formatKHR(amountInUSD: number): string {
+  const khrAmount = Math.round(amountInUSD * KHR_RATE);
+  return `៛${khrAmount.toLocaleString("en-US")}`;
+}
+
+export function formatDualCurrency(amountInUSD: number): string {
+  return `${formatCurrency(amountInUSD)} • ${formatKHR(amountInUSD)}`;
 }
 
 export function formatDate(dateString: string): string {
