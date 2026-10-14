@@ -46,7 +46,7 @@ services:
     prefix: "/api/v1/users"
     target: "http://localhost:8002"
     timeout_seconds: 5
-    require_auth: true
+    require_auth: false
 
   catalog:
     name: "catalog-service"
@@ -114,6 +114,13 @@ services:
   pricing:
     name: "pricing-service"
     prefix: "/api/v1/pricing"
+    target: "http://localhost:8010"
+    timeout_seconds: 5
+    require_auth: false
+
+  prices:
+    name: "pricing-service-prices"
+    prefix: "/api/v1/prices"
     target: "http://localhost:8010"
     timeout_seconds: 5
     require_auth: false
