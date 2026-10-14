@@ -7,6 +7,7 @@ import { Compass, Lock, Mail, User, ArrowRight } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Logo } from "@/components/ui/logo";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -31,12 +32,12 @@ export default function RegisterPage() {
     <div className="flex min-h-[calc(100vh-10rem)] items-center justify-center px-4 py-12">
       <div className="w-full max-w-md space-y-8 rounded-3xl border border-border/70 bg-card/60 p-8 shadow-2xl backdrop-blur-xl">
         <div className="text-center space-y-2">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-primary to-indigo-500 text-white shadow-lg shadow-primary/25">
-            <Compass className="h-6 w-6" />
+          <div className="flex justify-center mb-3">
+            <Logo size="lg" showSubtitle={false} />
           </div>
           <h1 className="text-2xl font-black tracking-tight">Create an Account</h1>
           <p className="text-xs text-muted-foreground">
-            Join the NovaMarket distributed ecosystem
+            Join the BC-Market distributed ecosystem
           </p>
         </div>
 
