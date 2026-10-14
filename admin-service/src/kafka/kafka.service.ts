@@ -31,41 +31,31 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
       this.producer = this.kafka.producer();
       this.consumer = this.kafka.consumer({ groupId });
 
-      // Attempt non-blocking connection with timeout
-      await Promise.race([
-        this.connectKafka(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Kafka connection timeout')), 2000)),
-      ]);
+      await this.producer.connect();
+      await this.consumer.connect();
+      await this.consumer.subscribe({ topics: ['order.events', 'seller.events', 'payment.events'], fromBeginning: false });
+
+      this.consumer.run({
+        eachMessage: async ({ topic, partition, message }) => {
+          try {
+            const valueStr = message.value?.toString();
+            if (!valueStr) return;
+            const payload = JSON.parse(valueStr);
+            this.logger.log(`Received Kafka message from ${topic} [partition ${partition}]: ${payload.eventType || topic}`);
+            await this.handleIncomingEvent(topic, payload);
+          } catch (err: any) {
+            this.logger.error(`Error processing Kafka message on ${topic}: ${err.message}`);
+          }
+        },
+      }).catch((err) => {
+        this.logger.warn(`Kafka consumer run error: ${err.message}`);
+      });
 
       this.isConnected = true;
       this.logger.log('Connected to Kafka brokers successfully.');
     } catch (err: any) {
       this.logger.warn(`Kafka connection unavailable: ${err.message}. Operating in fallback decoupled mode.`);
     }
-  }
-
-  private async connectKafka() {
-    if (!this.producer || !this.consumer) return;
-
-    await this.producer.connect();
-    await this.consumer.connect();
-
-    // Subscribe to key platform events
-    await this.consumer.subscribe({ topics: ['order.events', 'seller.events', 'payment.events'], fromBeginning: false });
-
-    await this.consumer.run({
-      eachMessage: async ({ topic, partition, message }) => {
-        try {
-          const valueStr = message.value?.toString();
-          if (!valueStr) return;
-          const payload = JSON.parse(valueStr);
-          this.logger.log(`Received Kafka message from ${topic} [partition ${partition}]: ${payload.eventType || topic}`);
-          await this.handleIncomingEvent(topic, payload);
-        } catch (err: any) {
-          this.logger.error(`Error processing Kafka message on ${topic}: ${err.message}`);
-        }
-      },
-    });
   }
 
   private async handleIncomingEvent(topic: string, event: any) {
