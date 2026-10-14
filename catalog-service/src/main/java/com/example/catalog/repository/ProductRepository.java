@@ -20,9 +20,9 @@ public interface ProductRepository extends JpaRepository<Product, String>, JpaSp
     Page<Product> findByCategoryId(String categoryId, Pageable pageable);
     Page<Product> findByBrandId(String brandId, Pageable pageable);
 
-    @EntityGraph(attributePaths = {"brand", "category", "variants", "images", "attributes"})
+    @EntityGraph(attributePaths = {"brand", "category", "variants"})
     Optional<Product> findWithDetailsById(String id);
 
-    @EntityGraph(attributePaths = {"brand", "category", "variants", "images", "attributes"})
+    @EntityGraph(attributePaths = {"brand", "category", "variants"})
     Optional<Product> findWithDetailsBySlug(String slug);
 }
