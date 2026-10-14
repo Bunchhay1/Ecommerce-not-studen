@@ -4,6 +4,8 @@ export const API_ENDPOINTS = {
     REGISTER: "/api/v1/auth/register",
     REFRESH: "/api/v1/auth/refresh",
     ME: "/api/v1/auth/me",
+    FORGOT_PASSWORD: "/api/v1/auth/forgot-password",
+    RESET_PASSWORD: "/api/v1/auth/reset-password",
   },
   USERS: {
     PROFILE: "/api/v1/users/me",
@@ -49,6 +51,7 @@ export const API_ENDPOINTS = {
   PRICING: {
     CALCULATE: "/api/v1/pricing/calculate",
     PROMOTIONS: "/api/v1/promotions",
+    PRICES: "/api/v1/prices",
   },
   REVIEWS: {
     LIST: (productId: string) => `/api/v1/reviews/products/${productId}`,
