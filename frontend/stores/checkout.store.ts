@@ -1,16 +1,24 @@
 import { create } from "zustand";
 import { ShippingAddress } from "@/types/order";
 
+export type CambodiaPaymentMethod =
+  | "bakong_khqr"
+  | "aba_payway"
+  | "wing"
+  | "acleda"
+  | "card"
+  | "cod";
+
 interface CheckoutState {
   step: 1 | 2 | 3;
   shippingAddress: ShippingAddress;
-  paymentMethod: "card" | "apple_pay" | "paypal";
+  paymentMethod: CambodiaPaymentMethod;
   couponCode: string;
   discount: number;
   setStep: (step: 1 | 2 | 3) => void;
   setShippingAddress: (addr: Partial<ShippingAddress>) => void;
-  setPaymentMethod: (method: "card" | "apple_pay" | "paypal") => void;
-  applyCoupon: (code: string) => boolean;
+  setPaymentMethod: (method: CambodiaPaymentMethod) => void;
+  applyCoupon: (code: string, subtotal?: number) => boolean;
   removeCoupon: () => void;
   resetCheckout: () => void;
 }
@@ -18,8 +26,8 @@ interface CheckoutState {
 const defaultAddress: ShippingAddress = {
   id: "addr-kh-default",
   fullName: "Sok Dara",
-  street: "Street 214, Samdach Pan Ave",
-  city: "Phnom Penh",
+  street: "Building 42, Street 214 (Samdach Pan Ave)",
+  city: "Daun Penh",
   state: "Phnom Penh",
   postalCode: "12000",
   country: "Cambodia",
@@ -29,7 +37,7 @@ const defaultAddress: ShippingAddress = {
 export const useCheckoutStore = create<CheckoutState>((set) => ({
   step: 1,
   shippingAddress: defaultAddress,
-  paymentMethod: "card",
+  paymentMethod: "bakong_khqr",
   couponCode: "",
   discount: 0,
 
@@ -42,9 +50,14 @@ export const useCheckoutStore = create<CheckoutState>((set) => ({
 
   setPaymentMethod: (paymentMethod) => set({ paymentMethod }),
 
-  applyCoupon: (code) => {
-    if (code.toUpperCase() === "SAVE10" || code.toUpperCase() === "FALL2026") {
-      set({ couponCode: code.toUpperCase(), discount: 50 });
+  applyCoupon: (code, subtotal = 100) => {
+    const clean = code.trim().toUpperCase();
+    if (clean === "SAVE10" || clean === "FALL2026") {
+      set({ couponCode: clean, discount: Math.round(subtotal * 0.1) || 20 });
+      return true;
+    }
+    if (clean === "KNY2026") {
+      set({ couponCode: clean, discount: Math.round(subtotal * 0.15) || 35 });
       return true;
     }
     return false;
@@ -56,7 +69,7 @@ export const useCheckoutStore = create<CheckoutState>((set) => ({
     set({
       step: 1,
       shippingAddress: defaultAddress,
-      paymentMethod: "card",
+      paymentMethod: "bakong_khqr",
       couponCode: "",
       discount: 0,
     }),
